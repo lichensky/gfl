@@ -12,12 +12,17 @@ in local repository.
 Tasks workflow (open -> progress -> review -> done) is managed with cli
 commands.
 
+## Installation
+
+Clone the repository and run `pip install .` either with `--user` flag or
+within virtualenv.
+
 ## Usage
 
 Available commands:
 
 ````
-    git-flow --help
+    gfl --help
     Usage: git-flow [OPTIONS] COMMAND [ARGS]...
 
     Git flow.
