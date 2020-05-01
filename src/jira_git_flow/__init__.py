@@ -234,7 +234,8 @@ def _assign_issue(jira, jira_issue, action):
 
 def connect():
     """Connect to JIRA and return Jira instance."""
-    return Jira(config.URL, config.EMAIL, config.TOKEN, config.PROJECT, config.MAX_RESULTS)
+    user = config.USERNAME if config.USE_USERNAME else config.EMAIL
+    return Jira(config.URL, user, config.TOKEN, config.PROJECT, config.MAX_RESULTS)
 
 
 if __name__ == "__main__":

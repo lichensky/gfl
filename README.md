@@ -1,3 +1,5 @@
+This project was started as a pet project in [Clearcode](https://github.com/ClearcodeHQ/jira-git-flow)
+
 # jira-git-flow
 
 The `jira-git-flow` is simple CLI tool to manage Jira flow along with

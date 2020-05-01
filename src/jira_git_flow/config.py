@@ -9,7 +9,8 @@ DATA_FILE = BASE_DIRECTORY + 'data.json'
 credentials = {
     'username': 'jira_username',
     'email': 'jira_email',
-    'token': 'jira_token'
+    'token': 'jira_token',
+    'use_username': True,
 }
 
 config = {
@@ -56,7 +57,7 @@ config = {
     'badges': {
         'open': {
             'badge': '•',
-            'color': 'white'
+            'color': 'gray'
         },
         'in_progress': {
             'badge': '•••',
@@ -112,6 +113,7 @@ PROJECT = config['project']
 USERNAME = credentials['username']
 EMAIL = credentials['email']
 TOKEN = credentials['token']
+USE_USERNAME = credentials['use_username']
 ACTIONS = config['actions']
 STATUSES = config['statuses']
 BADGES = config['badges']
