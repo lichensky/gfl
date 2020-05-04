@@ -1,7 +1,8 @@
 import click
 from prompt_toolkit import prompt
 from jira_git_flow import config
-from jira_git_flow.credentials import CredentialsManager
+from jira_git_flow.credentials import CredentialsRepository
+from jira_git_flow.instances import InstanceRepository, InstanceCLI
 from jira_git_flow import git
 from jira_git_flow.jira_api import Jira
 from jira_git_flow import cli
@@ -9,7 +10,9 @@ from jira_git_flow.models import JiraIssue
 from jira_git_flow.storage import storage
 from jira_git_flow.util import generate_branch_name
 
-cm = CredentialsManager()
+credentials_repository = CredentialsRepository()
+instance_repo = InstanceRepository()
+instance_cli = InstanceCLI(credentials_repository, instance_repo)
 
 @click.group(name="git-flow")
 def gfl():
@@ -24,11 +27,27 @@ def credentials():
 @credentials.command(name="add")
 def add_credentials():
     """Add new credentials."""
-    cm.add()
+    credentials_repository.add()
 
 @credentials.command(name="list")
 def list_credentials():
-    cm.list_credentials()
+    """List available credentials."""
+    credentials_repository.list_credentials()
+
+
+@gfl.group(name="projects")
+def projects():
+    """Manage JIRA projects."""
+
+@projects.command(name="add")
+def add_project():
+    instance = instance_cli.new()
+    instance_repo.add(instance)
+
+@projects.command()
+def foo():
+    x = instance_repo.find_by_name('xxx')
+    print(x)
 
 
 @gfl.command()

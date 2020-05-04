@@ -2,6 +2,7 @@ import json
 import os
 
 BASE_DIRECTORY = os.path.expanduser('~') + '/.config/jira-git-flow/'
+DATA_DIR = os.path.join(BASE_DIRECTORY, 'data')
 CREDENTIAL_FILE = BASE_DIRECTORY + 'credentials.json'
 CONFIG_FILE = BASE_DIRECTORY + 'config.json'
 DATA_FILE = BASE_DIRECTORY + 'data.json'

@@ -1,5 +1,5 @@
 import os
-from tinydb import TinyDB
+from tinydb import TinyDB, Query
 from prompt_toolkit import prompt, print_formatted_text, HTML
 
 db_path = os.path.expanduser('~') + '/.config/jira-git-flow/credentials.db'
@@ -21,7 +21,7 @@ class Credentials(object):
         return cls(db['name'], db['username'], db['email'], db['token'])
 
 
-class CredentialsManager(object):
+class CredentialsRepository(object):
     """Credentials manager"""
     def add(self):
         """Add new credentials."""
@@ -39,3 +39,6 @@ class CredentialsManager(object):
             print_formatted_text(HTML("<b>Credentials:</b> %s" % cred['name']))
             print_formatted_text(HTML("  <b>Username:</b> %s" % cred['username']))
             print_formatted_text(HTML("  <b>Email:</b> %s" % cred['email']))
+
+    def get_names(self):
+        return [c['name'] for c in db.all()]
