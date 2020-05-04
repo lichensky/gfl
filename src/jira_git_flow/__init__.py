@@ -1,5 +1,7 @@
 import click
+from prompt_toolkit import prompt
 from jira_git_flow import config
+from jira_git_flow.credentials import CredentialsManager
 from jira_git_flow import git
 from jira_git_flow.jira_api import Jira
 from jira_git_flow import cli
@@ -7,13 +9,29 @@ from jira_git_flow.models import JiraIssue
 from jira_git_flow.storage import storage
 from jira_git_flow.util import generate_branch_name
 
+cm = CredentialsManager()
 
 @click.group(name="git-flow")
-def git_flow():
+def gfl():
     """Git flow."""
 
 
-@git_flow.command()
+@gfl.group(name="credentials")
+def credentials():
+    """Manage JIRA credentials."""
+    pass
+
+@credentials.command(name="add")
+def add_credentials():
+    """Add new credentials."""
+    cm.add()
+
+@credentials.command(name="list")
+def list_credentials():
+    cm.list_credentials()
+
+
+@gfl.command()
 @click.option('-k', '--key', is_flag=True)
 @click.argument('keyword', nargs=-1, type=str)
 def workon(key, keyword):
@@ -26,31 +44,31 @@ def workon(key, keyword):
     click.echo('Working on {}'.format(issue))
 
 
-@git_flow.command()
+@gfl.command()
 def story():
     """Create a story"""
     create_issue('story', subtask=False)
 
 
-@git_flow.command()
+@gfl.command()
 def start():
     """Start story/task"""
     _change_status('start_progress')
 
 
-@git_flow.command()
+@gfl.command()
 def feature():
     """Create (work on) feature."""
     create_subtask('feature')
 
 
-@git_flow.command()
+@gfl.command()
 def bug():
     """Create (work on) bugfix."""
     create_subtask('bug')
 
 
-@git_flow.command()
+@gfl.command()
 @click.option('-s', '--skip-pr', is_flag=True, default=False)
 def review(skip_pr):
     """Move issue to review"""
@@ -70,13 +88,13 @@ def review(skip_pr):
         _make_action(jira, issue, action)
 
 
-@git_flow.command()
+@gfl.command()
 def resolve():
     """Resolve issue"""
     _change_status('resolve')
 
 
-@git_flow.command()
+@gfl.command()
 @click.argument('message', type=str)
 def commit(message):
     """Commit for issue"""
@@ -84,14 +102,14 @@ def commit(message):
     git.commit('{} {}'.format(issue_key, message))
 
 
-@git_flow.command()
+@gfl.command()
 def publish():
     """Push branch to origin"""
     branch = generate_branch_name(storage.get_current_issue())
     git.push(branch)
 
 
-@git_flow.command()
+@gfl.command()
 def finish():
     """Finish story"""
     stories = cli.choose_by_types('story')
@@ -106,7 +124,7 @@ def finish():
             storage.work_on_story(story)
 
 
-@git_flow.command()
+@gfl.command()
 def status():
     """Get work status"""
     click.echo("You're working on story: {}".format(storage.get_current_story()))
@@ -115,7 +133,7 @@ def status():
     cli.choose_interactive(filter_function=lambda issue: False)
 
 
-@git_flow.command()
+@gfl.command()
 def sync():
     """Sync stories between Jira and local storage"""
     jira = connect()

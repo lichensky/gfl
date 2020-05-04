@@ -41,7 +41,7 @@ setup(
     test_suite='tests',
     entry_points={
         'console_scripts': [
-            'gfl = jira_git_flow:git_flow',
+            'gfl = jira_git_flow:gfl',
         ],
     },
 )
