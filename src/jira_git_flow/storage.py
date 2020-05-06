@@ -4,7 +4,6 @@ from marshmallow import Schema, fields, post_load
 import os
 
 from jira_git_flow import config
-from jira_git_flow.models import JiraIssue
 
 
 class Keys(object):
@@ -26,9 +25,9 @@ class IssueSchema(Schema):
     status = fields.Str()
     type = fields.Str()
 
-    @post_load
-    def make_issue(self, data):
-        return JiraIssue(**data)
+    # @post_load
+    # def make_issue(self, data):
+    #     return Issue(**data)
 
 
 class StorySchema(IssueSchema):
@@ -112,9 +111,10 @@ class Storage(object):
             except ValueError:
                 pass
 
+    # TODO: fix syncing
     def sync(self, stories):
-        synced_stories = [JiraIssue.from_issue(story) for story in stories]
-        self.data[Keys.stories] = synced_stories
+        # synced_stories = [Issue.from_jira(story) for story in stories]
+        self.data[Keys.stories] = []#synced_stories
         self._save_data()
 
     def resolve_issue(self, issue):

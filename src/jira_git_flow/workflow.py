@@ -43,18 +43,17 @@ class WorkflowCLI:
 
     def new(self):
         name = questionary.text("Workflow name:").ask()
-        # name = prompt("Workflow name: ")
         workflow = Workflow(name)
 
-        # print("Enter issue types mapping")
-        # for issue_type in TYPES:
-        #     mapping = prompt(f"{issue_type}: ")
-        #     workflow.add_type(issue_type, mapping)
+        print("Enter issue types mapping")
+        for issue_type in TYPES:
+            mapping = prompt(f"{issue_type}: ")
+            workflow.add_type(issue_type, mapping)
 
-        # print("Enter issue statuses mapping (separated by comma)")
-        # for status in STATUSES:
-        #     mapping = prompt_for_collection(status)
-        #     workflow.add_status(status, mapping)
+        print("Enter issue statuses mapping (separated by comma)")
+        for status in STATUSES:
+            mapping = prompt_for_collection(status)
+            workflow.add_status(status, mapping)
 
         for action in ACTIONS:
             print()

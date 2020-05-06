@@ -8,7 +8,7 @@ from jira_git_flow.projects import ProjectCLI
 from jira_git_flow import git
 from jira_git_flow.jira_api import Jira
 from jira_git_flow import cli
-from jira_git_flow.models import JiraIssue
+from jira_git_flow.issues import Issue, IssueRepository, IssuesCLI
 from jira_git_flow.storage import storage
 from jira_git_flow.util import generate_branch_name
 
@@ -16,12 +16,14 @@ from jira_git_flow.util import generate_branch_name
 credentials_repository = CredentialsRepository()
 instance_repository = InstanceRepository()
 workflow_repository = WorkflowRepository()
+issue_repository = IssueRepository()
 
 # Initialize CLIs
 credentials_cli = CredentialsCLI(credentials_repository)
 instances_cli = InstanceCLI(instance_repository, credentials_repository)
 workflow_cli = WorkflowCLI(workflow_repository)
 projects_cli = ProjectCLI()
+issues_cli = IssuesCLI(issue_repository)
 
 @click.group(name="git-flow")
 def gfl():
@@ -81,7 +83,7 @@ def workon(key, keyword):
         issue = work_on_task()
     else:
         issue = get_issue_from_jira(key, keyword, 'story')
-        storage.add_issue(issue)
+        issue_repository.save(issue)
     click.echo('Working on {}'.format(issue))
 
 
@@ -171,7 +173,7 @@ def status():
     click.echo("You're working on story: {}".format(storage.get_current_story()))
     click.echo("You're working on issue: {}".format(storage.get_current_issue()))
     click.echo("Stories:")
-    cli.choose_interactive(filter_function=lambda issue: False)
+    issues_cli.choose_interactive(filter_function=lambda issue: False)
 
 
 @gfl.command()
@@ -184,7 +186,7 @@ def sync():
 
 def work_on_task():
     """Work on task from local storage."""
-    issue = cli.choose_issue()
+    issue = issues_cli.choose_issue()
     if not issue:
         exit('Select issue!')
     if issue.type == 'story':
@@ -203,17 +205,20 @@ def checkout_branch(issue):
 
 def create_issue(type, subtask, start_progress=True):
     """Create Jira issue and return model."""
-    fields = cli.get_issue_fields(type, subtask)
+    try:
+        fields = cli.get_issue_fields(type, subtask)
 
-    jira = connect()
-    issue = JiraIssue.from_issue(jira.create_issue(fields))
+        jira = connect()
+        issue = Issue.from_jira(jira.create_issue(fields))
 
-    if start_progress:
-        _make_action(jira, issue, 'start_progress')
+        if start_progress:
+            _make_action(jira, issue, 'start_progress')
 
-    storage.add_issue(issue)
+        storage.add_issue(issue)
 
-    return issue
+        return issue
+    except Exception as e:
+        raise click.ClickException(e)
 
 
 def create_subtask(type):
@@ -229,20 +234,25 @@ def get_issue_from_jira(is_key, keyword, type):
     Issue can be searched by the keyword or specified via issue key.
     Return internal issue model.
     """
-    jira = connect()
-    keyword = ' '.join(keyword)
-    if is_key:
-        issue = jira.get_issue_by_key(keyword)
-    else:
-        issues = jira.search_issues(keyword, type=type)
-        if not issues:
-            exit('No issues found with selected keyword: {}!'.format(keyword))
-        elif len(issues) > 1:
-            issue = cli.choose_issues_from_simple_view(issues)
+    try:
+        jira = connect()
+        keyword = ' '.join(keyword)
+        if is_key:
+            issue = jira.get_issue_by_key(keyword)
         else:
-            issue = issues[0]
+            issues = jira.search_issues(keyword, type=type)
+            if not issues:
+                exit('No issues found with selected keyword: {}!'.format(keyword))
+            elif len(issues) > 1:
+                issue = issues_cli.choose_issues_from_simple_view(issues)
+            else:
+                issue = issues[0]
 
-    return JiraIssue.from_issue(issue)
+        return Issue.from_jira(issue)
+    except Exception as e:
+        # raise click.ClickException(e)
+        raise e
+
 
 
 def _get_issues_by_action(action):
@@ -266,7 +276,6 @@ def _make_action(jira, issue, action_to_perform):
         jira.transition_issue(jira_issue, transition)
     _assign_issue(jira, jira_issue, action)
     storage.update_issue(issue)
-    click.echo('{} - {}'.format(issue, action_to_perform))
 
 
 def _get_issue_actions(issue):

@@ -2,7 +2,6 @@
 import click
 
 from jira_git_flow import config
-from jira_git_flow.models import JiraIssue
 from jira_git_flow.storage import storage
 
 from prompt_toolkit import print_formatted_text, HTML
@@ -344,49 +343,6 @@ def _get_multiline_input():
         else:
             break
     return '\n'.join(lines)
-
-
-def choose_issues_from_simple_view(issues):
-    if not issues:
-        exit('No issues.')
-    click.echo('Matching issues')
-    for idx, issue in enumerate(issues):
-        issue_model = JiraIssue.from_issue(issue)
-        click.echo('{}: {} {}'.format(idx, issue_model.key, issue_model.summary))
-    issue_id = click.prompt('Choose issue', type=int)
-    return issues[issue_id]
-
-
-def choose_issue():
-    issues = choose_interactive()
-    if issues:
-        return issues[0]
-
-
-def choose_by_types(types):
-    return choose_interactive(lambda issue: issue.type in types)
-
-
-def choose_by_status(status):
-    return choose_interactive(lambda issue: issue.status == status)
-
-
-def choose_interactive(filter_function=lambda issue: True):
-    stories = storage.get_stories()
-
-    if not stories:
-        return []
-
-    pointer_index = get_pointer_index(stories)
-    choices = convert_stories_to_choices(stories, filter_function)
-
-    if choices[pointer_index].get('disabled'):
-        pointer_index = 0
-
-    issues = select_issue(pointer_index=pointer_index,
-                          choices=choices)
-
-    return issues
 
 
 def convert_stories_to_choices(stories, filter_function):
