@@ -3,19 +3,42 @@ from prompt_toolkit import prompt
 from prompt_toolkit.completion import WordCompleter
 
 from jira_git_flow import config
+from jira_git_flow.db import Model, Repository
 
-db = TinyDB(config.DATA_DIR + 'projects.json')
 
-class Project():
-    def __init(self, url, key, credentials):
+class Statuses:
+    def __init__(self):
+        self.open = []
+        self.progress = []
+        self.review = []
+        self.closed = []
+
+
+class Workflow:
+    def __init__(self, statuses, actions):
+        self.statuses = statuses
+        self.actions = actions
+
+
+class Project(Model):
+    def __init(self, key, instance):
         self.key = key
-        self.url = url
-        self.credentials = credentials
-
-    def save(self):
-        db.insert(self.__dict__)
+        self.instance = instance
 
 
-class ProjectRepository():
-    def add(self):
+class ProjectRepository(Repository):
+    def __init__(self):
+        super().__init__(Project, "projects.json")
 
+
+class ProjectCLI:
+    def __init__(self):
+        super().__init__()
+
+    def new(self):
+        key = prompt("Project key: ")
+        instance = prompt("Project instance: ")
+        print("Enter issue statuses mapping (splitted by comma)")
+        statuses = Statuses()
+        statuses.open = prompt("Open: ").split(",")
+        print(statuses.open)

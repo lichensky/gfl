@@ -11,7 +11,8 @@ requirements = [
     'wheel==0.29.0',  # adds support for building wheels
     'pbr>=3.0.0',  # jira dependency, https://github.com/pycontribs/jira/issues/501
     'marshmallow==2.16.3',
-    'prompt-toolkit==2.0.9'
+    'prompt-toolkit==2.0.9',
+    'questionary==1.5.2',
 ]
 
 requirements_tests = [

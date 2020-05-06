@@ -1,44 +1,44 @@
 import os
-from tinydb import TinyDB, Query
 from prompt_toolkit import prompt, print_formatted_text, HTML
 
-db_path = os.path.expanduser('~') + '/.config/jira-git-flow/credentials.db'
-db = TinyDB(db_path)
+from jira_git_flow import config
+from jira_git_flow.cli import print_simple_collection
+from jira_git_flow.db import Model, Repository, FindableByName
+from jira_git_flow.validators import NameValidator
 
-class Credentials(object):
+
+class Credentials(Model):
     """Credentials object"""
+
     def __init__(self, name, username, email, token):
         self.name = name
         self.username = username
         self.email = email
         self.token = token
 
-    def save(self):
-        db.insert(self.__dict__)
 
-    @classmethod
-    def from_db(cls, db):
-        return cls(db['name'], db['username'], db['email'], db['token'])
+class CredentialsRepository(Repository, FindableByName):
+    """Credentials repository"""
+
+    def __init__(self):
+        super().__init__(Credentials, "credentials.json")
 
 
-class CredentialsRepository(object):
-    """Credentials manager"""
-    def add(self):
-        """Add new credentials."""
-        name = prompt("Credentials name: ")
+class CredentialsCLI:
+    def __init__(self, repository):
+        self.repository = repository
+
+    def new(self):
+        nv = NameValidator("Credentials", self.repository)
+        name = prompt("Credentials name: ", validator=nv)
         email = prompt("Email: ")
         username = prompt("Username: ")
         token = prompt("Token/password: ", is_password=True)
 
-        credentials = Credentials(name, username, email, token)
-        credentials.save()
+        c = Credentials(name, username, email, token)
+        self.repository.save(c)
 
-    def list_credentials(self):
+    def list(self):
         """List all credentials."""
-        for cred in db:
-            print_formatted_text(HTML("<b>Credentials:</b> %s" % cred['name']))
-            print_formatted_text(HTML("  <b>Username:</b> %s" % cred['username']))
-            print_formatted_text(HTML("  <b>Email:</b> %s" % cred['email']))
-
-    def get_names(self):
-        return [c['name'] for c in db.all()]
+        print_simple_collection(self.repository.all(), "name",
+            exclude=["token"])

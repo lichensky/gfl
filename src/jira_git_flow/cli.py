@@ -5,7 +5,7 @@ from jira_git_flow import config
 from jira_git_flow.models import JiraIssue
 from jira_git_flow.storage import storage
 
-from prompt_toolkit import print_formatted_text
+from prompt_toolkit import print_formatted_text, HTML
 from prompt_toolkit.layout.screen import Point
 from prompt_toolkit.application import Application, get_app
 from prompt_toolkit.filters import IsDone
@@ -467,3 +467,18 @@ def working_on_story(story):
     if current_story:
         return story == current_story
     return False
+
+
+def print_simple_collection(collection, id, exclude=[]):
+    for item in collection:
+        item_dict = item.__dict__
+
+        id_title = id.capitalize()
+        print_formatted_text(HTML("<b>%s: </b>%s" % (id_title, item_dict[id])))
+
+        for k, v in item_dict.items():
+            if k != id and k not in exclude:
+                print_formatted_text(HTML("  <b>%s:</b> %s" % (k.capitalize(), v)))
+
+        if item != collection[-1]:
+            print()
