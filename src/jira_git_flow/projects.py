@@ -1,44 +1,46 @@
-from tinydb import TinyDB
+import questionary
 from prompt_toolkit import prompt
-from prompt_toolkit.completion import WordCompleter
+from tinydb import TinyDB
 
 from jira_git_flow import config
-from jira_git_flow.db import Model, Repository
-
-
-class Statuses:
-    def __init__(self):
-        self.open = []
-        self.progress = []
-        self.review = []
-        self.closed = []
-
-
-class Workflow:
-    def __init__(self, statuses, actions):
-        self.statuses = statuses
-        self.actions = actions
+from jira_git_flow.cli import print_simple_collection
+from jira_git_flow.db import Model, EntityRepository
+from jira_git_flow.validators import UniqueID
 
 
 class Project(Model):
-    def __init(self, key, instance):
+    def __init__(self, id, key, instance, workflow):
+        self.id = id
         self.key = key
         self.instance = instance
+        self.workflow = workflow
 
 
-class ProjectRepository(Repository):
+class ProjectRepository(EntityRepository):
     def __init__(self):
         super().__init__(Project, "projects.json")
 
 
 class ProjectCLI:
-    def __init__(self):
-        super().__init__()
+    def __init__(self, project_repository, instance_repository, workflow_repository):
+        self.projects = project_repository
+        self.instances = instance_repository
+        self.workflows = workflow_repository
 
     def new(self):
-        key = prompt("Project key: ")
-        instance = prompt("Project instance: ")
-        print("Enter issue statuses mapping (splitted by comma)")
-        statuses = Statuses()
-        statuses.open = prompt("Open: ").split(",")
-        print(statuses.open)
+        id = prompt(
+            "Project ID: ", validator=UniqueID("Project", self.projects)
+        )
+        key = questionary.text("Project key:").ask()
+        instance = questionary.select(
+            "Project instance:", choices=self.instances.ids()
+        ).ask()
+        workflow = questionary.select(
+            "Project workflow:", choices=self.workflows.ids()
+        ).ask()
+
+        project = Project(id, key, instance, workflow)
+        self.projects.save(project)
+
+    def list(self):
+        print_simple_collection(self.projects.all(), "id")

@@ -14,6 +14,7 @@ class Model():
     def from_db(cls, db):
         return cls(**db)
 
+
 class Repository():
     def __init__(self, model, path):
         self.db = TinyDB(os.path.join(config.DATA_DIR, path))
@@ -26,17 +27,17 @@ class Repository():
         return [self.model.from_db(entity) for entity in self.db.all()]
 
 
-class FindableByName():
-    def names(self):
-        return [entity['name'] for entity in self.db.all()]
+class EntityRepository(Repository):
+    def ids(self):
+        return [entity.id for entity in self.all()]
 
-    def exists(self, name):
+    def exists(self, id):
         Entity = Query()
-        return bool(self.db.search(Entity.name.matches(name)))
+        return bool(self.db.search(Entity.id.matches(id)))
 
-    def find_by_name(self, name):
+    def find_by_id(self, id):
         Entity = Query()
         try:
-            return self.db.search(Entity.name == name)[0]
+            return self.db.search(Entity.id == id)[0]
         except IndexError:
             return None

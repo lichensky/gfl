@@ -1,10 +1,28 @@
-from jira_git_flow.db import Model, Repository
+import json
+import pathlib
+import questionary
+from os import path
 
-class Workspace(Model):
-    def __init__(self, path):
-        self.path = path
-        self.current_task = None
+WORKSPACE_FILE = ".gfl"
 
-class WorkspaceRepository(Repository):
-    def __init__(self):
-        super().__init__(Workspace, "workspaces.json")
+
+class Workspace:
+    def __init__(self, project):
+        if path.exists(WORKSPACE_FILE):
+            return
+
+        with open(WORKSPACE_FILE, "w+") as f:
+            workspace = {"project": project}
+            print(workspace)
+            json.dump(workspace, f)
+
+
+class WorkspaceCLI:
+    def __init__(self, project_repository):
+        self.projects = project_repository
+
+    def init(self):
+        project = questionary.select(
+            "Choose project:", choices=self.projects.ids()
+        ).ask()
+        return Workspace(project)

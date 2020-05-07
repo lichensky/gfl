@@ -5,22 +5,22 @@ from prompt_toolkit.completion.word_completer import WordCompleter
 from tinydb import TinyDB, Query
 
 from jira_git_flow import config
-from jira_git_flow.db import Model, Repository, FindableByName
+from jira_git_flow.db import Model, EntityRepository
 from jira_git_flow.cli import print_simple_collection
-from jira_git_flow.validators import NameValidator, ExistenceValidator
+from jira_git_flow.validators import UniqueID, ExistenceValidator
 
 JIRA_SERVER = "server"
 JIRA_CLOUD = "cloud"
 
 class Instance(Model):
-    def __init__(self, name, url, type, credentials):
-        self.name = name
+    def __init__(self, id, url, type, credentials):
+        self.id = id
         self.url = url
         self.credentials = credentials
         self.type = type
 
 
-class InstanceRepository(Repository, FindableByName):
+class InstanceRepository(EntityRepository):
     def __init__(self):
         super().__init__(Instance, "instances.json")
 
@@ -31,8 +31,8 @@ class InstanceCLI:
         self.credentials_repository = credentials_repository
 
     def new(self):
-        nv = NameValidator("Instance", self.instance_repository)
-        name = prompt("Name: ", validator=nv)
+        validator = UniqueID("Instance", self.instance_repository)
+        id = prompt("Instance ID: ", validator=validator)
         url = prompt("Instance URL: ")
 
         type = questionary.select(
@@ -42,13 +42,13 @@ class InstanceCLI:
 
         credentials = questionary.select(
             "Credentials:",
-            choices=self.credentials_repository.names()
+            choices=self.credentials_repository.ids()
         ).ask()
 
-        i = Instance(name, url, type, credentials)
+        i = Instance(id, url, type, credentials)
         self.instance_repository.save(i)
 
     def list(self):
         """List all instances."""
-        print_simple_collection(self.instance_repository.all(), "name")
+        print_simple_collection(self.instance_repository.all(), "id")
 

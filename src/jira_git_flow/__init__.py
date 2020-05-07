@@ -4,7 +4,8 @@ from jira_git_flow import config
 from jira_git_flow.credentials import CredentialsRepository, CredentialsCLI
 from jira_git_flow.instances import InstanceCLI, InstanceRepository
 from jira_git_flow.workflow import WorkflowRepository, WorkflowCLI
-from jira_git_flow.projects import ProjectCLI
+from jira_git_flow.projects import ProjectCLI, ProjectRepository
+from jira_git_flow.workspaces import Workspace, WorkspaceCLI
 from jira_git_flow import git
 from jira_git_flow.jira_api import Jira
 from jira_git_flow import cli
@@ -17,13 +18,15 @@ credentials_repository = CredentialsRepository()
 instance_repository = InstanceRepository()
 workflow_repository = WorkflowRepository()
 issue_repository = IssueRepository()
+project_repository = ProjectRepository()
 
 # Initialize CLIs
 credentials_cli = CredentialsCLI(credentials_repository)
 instances_cli = InstanceCLI(instance_repository, credentials_repository)
 workflow_cli = WorkflowCLI(workflow_repository)
-projects_cli = ProjectCLI()
 issues_cli = IssuesCLI(issue_repository)
+projects_cli = ProjectCLI(project_repository, instance_repository, workflow_repository)
+workspace_cli = WorkspaceCLI(project_repository)
 
 @click.group(name="git-flow")
 def gfl():
@@ -45,33 +48,45 @@ def list_credentials():
     """List available credentials."""
     credentials_cli.list()
 
-@gfl.group(name="instance")
-def instance():
+@gfl.group(name="instances")
+def instances():
     """Manage JIRA instances."""
 
-@instance.command(name="add")
+@instances.command(name="add")
 def add_instance():
     instances_cli.new()
 
-@instance.command(name="list")
+@instances.command(name="list")
 def list_instances():
     instances_cli.list()
 
-@gfl.group(name="workflow")
-def workflow():
+@gfl.group(name="workflows")
+def workflows():
     pass
 
-@workflow.command(name="add")
+@workflows.command(name="add")
 def add_workflow():
     workflow_cli.new()
 
-@gfl.group(name="project")
-def project():
+@workflows.command(name="list")
+def list_workflows():
+    workflow_cli.list()
+
+@gfl.group(name="projects")
+def projects():
     pass
 
-@project.command(name="add")
+@projects.command(name="add")
 def add_project():
     projects_cli.new()
+
+@projects.command(name="list")
+def list_projects():
+    projects_cli.list()
+
+@gfl.command()
+def init():
+    workspace_cli.init()
 
 
 @gfl.command()
