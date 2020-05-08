@@ -5,7 +5,7 @@ from jira_git_flow.credentials import CredentialsRepository, CredentialsCLI
 from jira_git_flow.instances import InstanceCLI, InstanceRepository
 from jira_git_flow.workflow import WorkflowRepository, WorkflowCLI
 from jira_git_flow.projects import ProjectCLI, ProjectRepository
-from jira_git_flow.workspaces import Workspace, WorkspaceCLI
+from jira_git_flow.workspaces import WorkspaceCLI, WorkspaceRepository
 from jira_git_flow import git
 from jira_git_flow.jira_api import Jira
 from jira_git_flow import cli
@@ -19,14 +19,19 @@ instance_repository = InstanceRepository()
 workflow_repository = WorkflowRepository()
 issue_repository = IssueRepository()
 project_repository = ProjectRepository()
+workspace_repository = WorkspaceRepository()
+
+# Initialize workspace
+workspace = workspace_repository.get_current_workspace()
 
 # Initialize CLIs
 credentials_cli = CredentialsCLI(credentials_repository)
 instances_cli = InstanceCLI(instance_repository, credentials_repository)
 workflow_cli = WorkflowCLI(workflow_repository)
-issues_cli = IssuesCLI(issue_repository)
+issues_cli = IssuesCLI(issue_repository, workspace)
 projects_cli = ProjectCLI(project_repository, instance_repository, workflow_repository)
-workspace_cli = WorkspaceCLI(project_repository)
+workspace_cli = WorkspaceCLI(workspace_repository, project_repository)
+
 
 @click.group(name="git-flow")
 def gfl():
@@ -38,51 +43,63 @@ def credentials():
     """Manage JIRA credentials."""
     pass
 
+
 @credentials.command(name="add")
 def add_credentials():
     """Add new credentials."""
     credentials_cli.new()
+
 
 @credentials.command(name="list")
 def list_credentials():
     """List available credentials."""
     credentials_cli.list()
 
+
 @gfl.group(name="instances")
 def instances():
     """Manage JIRA instances."""
+
 
 @instances.command(name="add")
 def add_instance():
     instances_cli.new()
 
+
 @instances.command(name="list")
 def list_instances():
     instances_cli.list()
+
 
 @gfl.group(name="workflows")
 def workflows():
     pass
 
+
 @workflows.command(name="add")
 def add_workflow():
     workflow_cli.new()
+
 
 @workflows.command(name="list")
 def list_workflows():
     workflow_cli.list()
 
+
 @gfl.group(name="projects")
 def projects():
     pass
+
 
 @projects.command(name="add")
 def add_project():
     projects_cli.new()
 
+
 @projects.command(name="list")
 def list_projects():
     projects_cli.list()
+
 
 @gfl.command()
 def init():
@@ -90,52 +107,53 @@ def init():
 
 
 @gfl.command()
-@click.option('-k', '--key', is_flag=True)
-@click.argument('keyword', nargs=-1, type=str)
+@click.option("-k", "--key", is_flag=True)
+@click.argument("keyword", nargs=-1, type=str)
 def workon(key, keyword):
     """Work on story/issue."""
+    require_workspace()
     if not keyword:
         issue = work_on_task()
     else:
-        issue = get_issue_from_jira(key, keyword, 'story')
+        issue = get_issue_from_jira(key, keyword, "story")
         issue_repository.save(issue)
-    click.echo('Working on {}'.format(issue))
+    click.echo("Working on {}".format(issue))
 
 
 @gfl.command()
 def story():
     """Create a story"""
-    create_issue('story', subtask=False)
+    create_issue("story", subtask=False)
 
 
 @gfl.command()
 def start():
     """Start story/task"""
-    _change_status('start_progress')
+    _change_status("start_progress")
 
 
 @gfl.command()
 def feature():
     """Create (work on) feature."""
-    create_subtask('feature')
+    create_subtask("feature")
 
 
 @gfl.command()
 def bug():
     """Create (work on) bugfix."""
-    create_subtask('bug')
+    create_subtask("bug")
 
 
 @gfl.command()
-@click.option('-s', '--skip-pr', is_flag=True, default=False)
+@click.option("-s", "--skip-pr", is_flag=True, default=False)
 def review(skip_pr):
     """Move issue to review"""
-    action = 'review'
+    action = "review"
     issues = _get_issues_by_action(action)
 
     if config.CREATE_PULL_REQUEST:
         for issue in issues:
-            skip_issue_pr = skip_pr or (issue.type == 'story')
+            skip_issue_pr = skip_pr or (issue.type == "story")
             if not skip_issue_pr:
                 branch = generate_branch_name(issue)
                 git.push(branch)
@@ -149,15 +167,15 @@ def review(skip_pr):
 @gfl.command()
 def resolve():
     """Resolve issue"""
-    _change_status('resolve')
+    _change_status("resolve")
 
 
 @gfl.command()
-@click.argument('message', type=str)
+@click.argument("message", type=str)
 def commit(message):
     """Commit for issue"""
-    issue_key = storage.get_current_issue().key
-    git.commit('{} {}'.format(issue_key, message))
+    issue_key = workspace.current_issue
+    git.commit("{} {}".format(issue_key, message))
 
 
 @gfl.command()
@@ -170,13 +188,13 @@ def publish():
 @gfl.command()
 def finish():
     """Finish story"""
-    stories = cli.choose_by_types('story')
+    stories = cli.choose_by_types("story")
     for story in stories:
         storage.finish(story)
 
     if storage.get_current_story() is None and storage.get_stories():
-        click.echo('Choose story to work on.')
-        choices = cli.choose_by_types('story')
+        click.echo("Choose story to work on.")
+        choices = cli.choose_by_types("story")
         if choices:
             story = choices[0]
             storage.work_on_story(story)
@@ -185,17 +203,17 @@ def finish():
 @gfl.command()
 def status():
     """Get work status"""
-    click.echo("You're working on story: {}".format(storage.get_current_story()))
-    click.echo("You're working on issue: {}".format(storage.get_current_issue()))
-    click.echo("Stories:")
-    issues_cli.choose_interactive(filter_function=lambda issue: False)
+    click.echo("Status:")
+    issues_cli.choose_interactive(filter_function=lambda issue: False, show_only=True)
 
 
 @gfl.command()
 def sync():
     """Sync stories between Jira and local storage"""
     jira = connect()
-    remote_stories = [jira.get_issue_by_key(story.key) for story in storage.get_stories()]
+    remote_stories = [
+        jira.get_issue_by_key(story.key) for story in storage.get_stories()
+    ]
     storage.sync(remote_stories)
 
 
@@ -203,12 +221,13 @@ def work_on_task():
     """Work on task from local storage."""
     issue = issues_cli.choose_issue()
     if not issue:
-        exit('Select issue!')
-    if issue.type == 'story':
-        storage.work_on_story(issue)
+        exit("Select issue!")
+    if issue.type == "story":
+        workspace.current_story = issue.key
     else:
         checkout_branch(issue)
-        storage.work_on_issue(issue)
+        workspace.current_issue = issue.key
+    workspace_repository.upsert(workspace)
     return issue
 
 
@@ -227,7 +246,7 @@ def create_issue(type, subtask, start_progress=True):
         issue = Issue.from_jira(jira.create_issue(fields))
 
         if start_progress:
-            _make_action(jira, issue, 'start_progress')
+            _make_action(jira, issue, "start_progress")
 
         storage.add_issue(issue)
 
@@ -251,13 +270,13 @@ def get_issue_from_jira(is_key, keyword, type):
     """
     try:
         jira = connect()
-        keyword = ' '.join(keyword)
+        keyword = " ".join(keyword)
         if is_key:
             issue = jira.get_issue_by_key(keyword)
         else:
             issues = jira.search_issues(keyword, type=type)
             if not issues:
-                exit('No issues found with selected keyword: {}!'.format(keyword))
+                exit("No issues found with selected keyword: {}!".format(keyword))
             elif len(issues) > 1:
                 issue = issues_cli.choose_issues_from_simple_view(issues)
             else:
@@ -267,7 +286,6 @@ def get_issue_from_jira(is_key, keyword, type):
     except Exception as e:
         # raise click.ClickException(e)
         raise e
-
 
 
 def _get_issues_by_action(action):
@@ -285,16 +303,16 @@ def _change_status(action, issues=None):
 
 def _make_action(jira, issue, action_to_perform):
     action = _get_issue_actions(issue)[action_to_perform]
-    issue.status = action['next_state']
+    issue.status = action["next_state"]
     jira_issue = jira.get_issue_by_key(issue.key)
-    for transition in action['transitions']:
+    for transition in action["transitions"]:
         jira.transition_issue(jira_issue, transition)
     _assign_issue(jira, jira_issue, action)
     storage.update_issue(issue)
 
 
 def _get_issue_actions(issue):
-    default_actions = config.ACTIONS['default']
+    default_actions = config.ACTIONS["default"]
     if issue.type in config.ACTIONS:
         actions = default_actions
         for action, parameters in config.ACTIONS[issue.type].items():
@@ -305,11 +323,11 @@ def _get_issue_actions(issue):
 
 
 def _get_action_status(action):
-    return config.ACTIONS['default'][action]['current_state']
+    return config.ACTIONS["default"][action]["current_state"]
 
 
 def _assign_issue(jira, jira_issue, action):
-    if 'assign_to_user' in action and action['assign_to_user']:
+    if "assign_to_user" in action and action["assign_to_user"]:
         jira.assign_issue(jira_issue, config.USERNAME)
     else:
         jira.assign_issue(jira_issue, None)
@@ -319,6 +337,12 @@ def connect():
     """Connect to JIRA and return Jira instance."""
     user = config.USERNAME if config.USE_USERNAME else config.EMAIL
     return Jira(config.URL, user, config.TOKEN, config.PROJECT, config.MAX_RESULTS)
+
+def require_workspace():
+    if not workspace:
+        print("Cannot run outside of workspace")
+        print("Run 'gfl init' to initialize workspace")
+        exit(1)
 
 
 if __name__ == "__main__":

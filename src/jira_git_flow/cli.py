@@ -146,7 +146,7 @@ class IssuesController(DynamicFormattedTextControl):
         super(IssuesController, self).__init__(
             self.get_formatted_choices,
             show_cursor=False,
-            get_cursor_position=lambda: Point(1, self.pointer_index))
+            get_cursor_position=lambda: Point(2, self.pointer_index))
 
     @property
     def line_count(self):
@@ -307,44 +307,6 @@ def select_issue(choices, pointer_index):
         return []
 
 
-def get_issue_fields(type, subtask):
-    issue = {}
-    if subtask:
-        current_story = storage.get_current_story()
-        click.echo('Creating subtask for story {}'.format(current_story))
-        issue['parent'] = {
-            'key': current_story.key
-        }
-
-    summary = click.prompt('Please enter {} summary'.format(type), type=str)
-    click.echo('Please enter {} description:'.format(type))
-    description = _get_multiline_input()
-    fields = {
-        'project': {'key': config.PROJECT},
-        'summary': summary,
-        'description': description,
-        'issuetype': {
-            'name': config.ISSUE_TYPES[type]['name'],
-            'subtask': subtask
-        },
-    }
-
-    issue.update(fields)
-
-    return issue
-
-
-def _get_multiline_input():
-    lines = []
-    while True:
-        line = input()
-        if line:
-            lines.append(line)
-        else:
-            break
-    return '\n'.join(lines)
-
-
 def convert_stories_to_choices(stories, filter_function):
     choices = []
 
@@ -372,57 +334,34 @@ def has_active_choices(choices):
     return False
 
 
-def get_pointer_index(stories):
-    flatten_issues = get_flatten_issues(stories)
-    current_issue = storage.get_current_issue()
-    current_story = storage.get_current_story()
+def get_pointer_index(stories, current_issue, current_story):
+    issue_keys = get_issue_keys(stories)
 
     for current in [current_issue, current_story]:
         if current:
             try:
-                return flatten_issues.index(current)
+                return issue_keys.index(current)
             except ValueError:
                 pass
     return 0
 
 
-def get_flatten_issues(stories):
-    flatten_issues = []
+def get_issue_keys(stories):
+    keys = []
     for story in stories:
-        flatten_issues.append(story)
-        flatten_issues.extend(story.subtasks)
-    return flatten_issues
+        keys.append(story.key)
+        keys.extend([task.key for task in story.subtasks])
+    return keys
 
 
 def render_issue_key(issue):
-    underline = ''
-    if storage.get_current_issue():
-        if working_on_issue(issue):
-            underline = 'underline'
-    else:
-        if working_on_story(issue):
-            underline = 'underline'
-    return ('bold %s' % underline, issue.key)
+    return ('bold', issue.key)
 
 
 def render_badge(issue):
     badge = config.BADGES[issue.status]['badge']
     color = config.BADGES[issue.status]['color']
     return ('fg: {color} bg:'.format(color=color), ' %s' % badge)
-
-
-def working_on_issue(issue):
-    current_issue = storage.get_current_issue()
-    if current_issue:
-        return issue == current_issue
-    return False
-
-
-def working_on_story(story):
-    current_story = storage.get_current_story()
-    if current_story:
-        return story == current_story
-    return False
 
 
 def print_simple_collection(collection, id, exclude=[]):
