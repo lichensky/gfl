@@ -1,14 +1,15 @@
 import questionary
+from marshmallow import Schema, fields, post_load
 from prompt_toolkit import prompt
 from tinydb import TinyDB
 
 from jira_git_flow import config
 from jira_git_flow.cli import print_simple_collection
-from jira_git_flow.db import Model, EntityRepository
+from jira_git_flow.db import EntityRepository
 from jira_git_flow.validators import UniqueID
 
 
-class Project(Model):
+class Project():
     def __init__(self, id, key, instance, workflow):
         self.id = id
         self.key = key
@@ -16,9 +17,20 @@ class Project(Model):
         self.workflow = workflow
 
 
+class ProjectSchema(Schema):
+    id = fields.Str()
+    key = fields.Str()
+    instance = fields.Str()
+    workflow = fields.Str()
+
+    @post_load
+    def deserialize(self, data, **kwargs):
+        return Project(**data)
+
+
 class ProjectRepository(EntityRepository):
     def __init__(self):
-        super().__init__(Project, "projects.json")
+        super().__init__(Project, ProjectSchema(), "projects.json")
 
 
 class ProjectCLI:
@@ -43,4 +55,4 @@ class ProjectCLI:
         self.projects.save(project)
 
     def list(self):
-        print_simple_collection(self.projects.all(), "id")
+        print_simple_collection(ProjectSchema(), self.projects.all(), "id")

@@ -5,29 +5,28 @@ from tinydb import TinyDB, Query
 
 from jira_git_flow import config
 
-class Model():
-    def to_db(self):
-        """Convert model to DB representation."""
-        return json.loads(json.dumps(self, default=lambda o: o.__dict__))
 
-    @classmethod
-    def from_db(cls, db):
-        return cls(**db)
-
-
-class Repository():
-    def __init__(self, model, path):
+class Repository:
+    def __init__(self, model, schema, path):
         self.db = TinyDB(os.path.join(config.DATA_DIR, path))
+        self.schema = schema
         self.model = model
 
     def save(self, model):
-        self.db.insert(model.to_db())
+        self.db.insert(self.schema.dump(model))
 
     def all(self):
-        return [self.model.from_db(entity) for entity in self.db.all()]
+        return [self.schema.load(entity) for entity in self.db.all()]
 
 
 class EntityRepository(Repository):
+    def update(self, model):
+        serialized = self.schema.dump(model)
+        self.db.update(serialized, Query().id == model.id)
+
+    def remove(self, model):
+        self.db.remove(Query().id == model.id)
+
     def ids(self):
         return [entity.id for entity in self.all()]
 

@@ -2,7 +2,6 @@
 import click
 
 from jira_git_flow import config
-from jira_git_flow.storage import storage
 
 from prompt_toolkit import print_formatted_text, HTML
 from prompt_toolkit.layout.screen import Point
@@ -364,9 +363,9 @@ def render_badge(issue):
     return ('fg: {color} bg:'.format(color=color), ' %s' % badge)
 
 
-def print_simple_collection(collection, id, exclude=[]):
+def print_simple_collection(schema, collection, id, exclude=[]):
     for item in collection:
-        item_dict = item.__dict__
+        item_dict = schema.dump(item)
 
         id_title = id.capitalize()
         print_formatted_text(HTML("<b>%s: </b>%s" % (id_title, item_dict[id])))

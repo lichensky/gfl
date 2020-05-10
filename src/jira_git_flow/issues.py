@@ -1,10 +1,11 @@
 import questionary
 
+from marshmallow import Schema, fields, post_load
 from prompt_toolkit import prompt
 from tinydb import Query
 
 from jira_git_flow import config
-from jira_git_flow.db import Model, Repository
+from jira_git_flow.db import Repository
 from jira_git_flow.cli import (
     get_pointer_index,
     convert_stories_to_choices,
@@ -12,7 +13,7 @@ from jira_git_flow.cli import (
 )
 
 
-class Issue(Model):
+class Issue():
     """Jira simplified issue"""
 
     def __init__(self, key, summary, type, status):
@@ -45,16 +46,6 @@ class Issue(Model):
         if subtask not in self.subtasks:
             self.subtasks.append(subtask)
 
-    # custom from_db method
-    @classmethod
-    def from_db(cls, db):
-        def issue_from_db(db):
-            return cls(db["key"], db["summary"], db["type"], db["status"])
-
-        issue = issue_from_db(db)
-        issue.subtasks = [issue_from_db(subtask) for subtask in db["subtasks"]]
-        return issue
-
 
 def _get_subtasks(jira_issue):
     try:
@@ -79,9 +70,25 @@ def _get_status(jira_issue):
     raise Exception(f"Unable to map issue status: {jira_status}")
 
 
+class IssueSchema(Schema):
+    key = fields.Str()
+    summary = fields.Str()
+    type = fields.Str()
+    status = fields.Str()
+    subtasks = fields.Nested("IssueSchema", many=True)
+    full_name = fields.Str()
+    workspace = fields.Str(allow_none=True)
+
+    @post_load
+    def deserialize(self, data, **kwargs):
+        issue = Issue(data["key"], data["summary"], data["type"], data["status"])
+        issue.subtasks = data["subtasks"]
+        return issue
+
+
 class IssueRepository(Repository):
     def __init__(self):
-        super().__init__(Issue, "issues.json")
+        super().__init__(Issue, IssueSchema(), "issues.json")
 
     def find_by_key(self, key):
         for story in self.all():
@@ -91,6 +98,9 @@ class IssueRepository(Repository):
             for subtask in story.subtasks:
                 if subtask.key == key:
                     return subtask
+
+    def remove(self, issue):
+        self.db.remove(Query().key == issue.key)
 
 
 class IssuesCLI:
@@ -115,8 +125,9 @@ class IssuesCLI:
         if not issues:
             return []
 
-        pointer_index = get_pointer_index(issues, self.workspace.current_issue,
-            self.workspace.current_story)
+        pointer_index = get_pointer_index(
+            issues, self.workspace.current_issue, self.workspace.current_story
+        )
         choices = convert_stories_to_choices(issues, filter_function)
 
         if choices[pointer_index].get("disabled") and not show_only:
@@ -142,26 +153,23 @@ class IssuesCLI:
         if is_subtask:
             last_story = self.workspace.current_story
             if last_story:
-                print('Creating subtask for story {}'.format(last_story))
-                issue['parent'] = {
-                    'key': last_story
-                }
+                print("Creating subtask for story {}".format(last_story))
+                issue["parent"] = {"key": last_story}
 
         summary = prompt(f"Please enter {type} summary")
         description = prompt(
             "Description: (ESCAPE followed by ENTER to accept)\n > ", multiline=True
         )
         fields = {
-            'project': {'key': workspace.project},
-            'summary': summary,
-            'description': description,
-            'issuetype': {
-                'name': config.ISSUE_TYPES[type]['name'],
-                'subtask': is_subtask
+            "project": {"key": workspace.project},
+            "summary": summary,
+            "description": description,
+            "issuetype": {
+                "name": config.ISSUE_TYPES[type]["name"],
+                "subtask": is_subtask,
             },
         }
 
         issue.update(fields)
 
         return issue
-

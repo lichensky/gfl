@@ -9,8 +9,8 @@ from jira_git_flow.workspaces import WorkspaceCLI, WorkspaceRepository
 from jira_git_flow import git
 from jira_git_flow.jira_api import Jira
 from jira_git_flow import cli
+from jira_git_flow import types
 from jira_git_flow.issues import Issue, IssueRepository, IssuesCLI
-from jira_git_flow.storage import storage
 from jira_git_flow.util import generate_branch_name
 
 # Initialize repositories
@@ -100,6 +100,13 @@ def add_project():
 def list_projects():
     projects_cli.list()
 
+@gfl.group()
+def workspaces():
+    pass
+
+@workspaces.command(name="list")
+def list_workspaces():
+    workspace_cli.list()
 
 @gfl.command()
 def init():
@@ -181,23 +188,27 @@ def commit(message):
 @gfl.command()
 def publish():
     """Push branch to origin"""
-    branch = generate_branch_name(storage.get_current_issue())
+    branch = generate_branch_name(workspace.current_issue)
     git.push(branch)
 
 
 @gfl.command()
 def finish():
     """Finish story"""
-    stories = cli.choose_by_types("story")
-    for story in stories:
-        storage.finish(story)
+    print(workspace.current_story)
+    stories = issues_cli.choose_by_types(types.STORY)
 
-    if storage.get_current_story() is None and storage.get_stories():
+    for story in stories:
+        issue_repository.remove(story)
+
+    print(workspace.current_story)
+    if workspace.current_story is None:
         click.echo("Choose story to work on.")
-        choices = cli.choose_by_types("story")
+        choices = issues_cli.choose_by_types(types.STORY)
         if choices:
             story = choices[0]
-            storage.work_on_story(story)
+            workspace.current_story = story.key
+            workspace_repository.update(workspace)
 
 
 @gfl.command()
@@ -336,7 +347,7 @@ def _assign_issue(jira, jira_issue, action):
 def connect():
     """Connect to JIRA and return Jira instance."""
     user = config.USERNAME if config.USE_USERNAME else config.EMAIL
-    return Jira(config.URL, user, config.TOKEN, config.PROJECT, config.MAX_RESULTS)
+    return JiraService(config.URL, user, config.TOKEN, config.PROJECT, config.MAX_RESULTS)
 
 def require_workspace():
     if not workspace:

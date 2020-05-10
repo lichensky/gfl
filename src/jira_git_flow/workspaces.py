@@ -3,29 +3,38 @@ import pathlib
 import questionary
 from os import path
 
+from marshmallow import Schema, fields, post_load
 from tinydb import Query
 
-from jira_git_flow.db import Model, Repository
+from jira_git_flow.db import Repository
+from jira_git_flow.cli import print_simple_collection
 
 
-class Workspace(Model):
+class Workspace():
     def __init__(self, path, project):
         self.path = path
         self.project = project
         self.current_story = None
         self.current_issue = None
 
-    @classmethod
-    def from_db(cls, db):
-        workspace = cls(db['path'], db['project'])
-        workspace.current_issue = db['current_issue']
-        workspace.current_story = db['current_story']
-        return workspace
 
+
+class WorkspaceSchema(Schema):
+    path = fields.Str()
+    project = fields.Str()
+    current_story = fields.Str(allow_none=True)
+    current_issue = fields.Str(allow_none=True)
+
+    @post_load
+    def deserialize(self, data, **kwargs):
+        workspace = Workspace(data['path'], data['project'])
+        workspace.current_issue = data['current_issue']
+        workspace.current_story = data['current_story']
+        return workspace
 
 class WorkspaceRepository(Repository):
     def __init__(self):
-        super().__init__(Workspace, "workspaces.json")
+        super().__init__(Workspace, WorkspaceSchema(), "workspaces.json")
 
     def upsert(self, workspace):
         query = Query()
@@ -38,13 +47,17 @@ class WorkspaceRepository(Repository):
     def get_by_path(self, path):
         workspace = Query()
         try:
-            return Workspace.from_db(self.db.search(workspace.path == path)[0])
+            return self.schema.load(self.db.search(workspace.path == path)[0])
         except IndexError:
             return None
 
     def get_current_workspace(self):
         path = pathlib.Path().absolute().as_posix()
         return self.get_by_path(path)
+
+    def update(self, workspace):
+        serialized = self.schema.dump(workspace)
+        self.db.update(serialized, Query().path == workspace.path)
 
 
 class WorkspaceCLI:
@@ -59,3 +72,6 @@ class WorkspaceCLI:
         ).ask()
         w = Workspace(path, project)
         self.workspaces.upsert(w)
+
+    def list(self):
+        print_simple_collection(WorkspaceSchema(), self.workspaces.all(), "path")
