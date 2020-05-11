@@ -1,9 +1,27 @@
 import os
 import json
 
+from marshmallow import fields
 from tinydb import TinyDB, Query
 
 from jira_git_flow import config
+
+
+class EntityNotFound(Exception):
+    pass
+
+
+class ForeignEntity(fields.Field):
+    def _serialize(self, value, attr, obj, **kwargs):
+        return value.id
+
+    def _deserialize(self, value, attr, data, **kwargs):
+        try:
+            repository = self.repository()
+            obj = repository.find_by_id(value)
+            return obj
+        except EntityNotFound:
+            return None
 
 
 class Repository:
@@ -37,6 +55,6 @@ class EntityRepository(Repository):
     def find_by_id(self, id):
         Entity = Query()
         try:
-            return self.db.search(Entity.id == id)[0]
+            return self.schema.load(self.db.search(Entity.id == id)[0])
         except IndexError:
-            return None
+            raise EntityNotFound(f"Entity not found, ID: {id}")

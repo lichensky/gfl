@@ -4,11 +4,11 @@ from prompt_toolkit import prompt, print_formatted_text, HTML
 
 from jira_git_flow import config
 from jira_git_flow.cli import print_simple_collection
-from jira_git_flow.db import EntityRepository
+from jira_git_flow.db import EntityRepository, ForeignEntity
 from jira_git_flow.validators import UniqueID
 
 
-class Credentials():
+class Credentials:
     """Credentials object"""
 
     def __init__(self, id, username, email, token):
@@ -16,6 +16,17 @@ class Credentials():
         self.username = username
         self.email = email
         self.token = token
+
+
+class CredentialsRepository(EntityRepository):
+    """Credentials repository"""
+
+    def __init__(self):
+        super().__init__(Credentials, CredentialsSchema(), "credentials.json")
+
+
+class CredentialsEntity(ForeignEntity):
+    repository = CredentialsRepository
 
 
 class CredentialsSchema(Schema):
@@ -27,12 +38,6 @@ class CredentialsSchema(Schema):
     @post_load
     def deserialize(self, data, **kwargs):
         return Credentials(**data)
-
-class CredentialsRepository(EntityRepository):
-    """Credentials repository"""
-
-    def __init__(self):
-        super().__init__(Credentials, CredentialsSchema(),  "credentials.json")
 
 
 class CredentialsCLI:
@@ -52,4 +57,6 @@ class CredentialsCLI:
 
     def list(self):
         """List all credentials."""
-        print_simple_collection(CredentialsSchema(), self.repository.all(), "id", exclude=["token"])
+        print_simple_collection(
+            CredentialsSchema(), self.repository.all(), "id", exclude=["token"]
+        )

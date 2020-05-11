@@ -8,6 +8,7 @@ from tinydb import Query
 
 from jira_git_flow.db import Repository
 from jira_git_flow.cli import print_simple_collection
+from jira_git_flow.projects import ProjectEntity
 
 
 class Workspace():
@@ -17,11 +18,19 @@ class Workspace():
         self.current_story = None
         self.current_issue = None
 
+    def set_current_issue(self, issue):
+        self.current_issue = issue.key
+
+    def get_jira_connection(self):
+        return self.project.get_jira_connection()
+
+    def get_action(self, name):
+        return self.project.workflow.get_action(name)
 
 
 class WorkspaceSchema(Schema):
     path = fields.Str()
-    project = fields.Str()
+    project = ProjectEntity()
     current_story = fields.Str(allow_none=True)
     current_issue = fields.Str(allow_none=True)
 
@@ -52,8 +61,15 @@ class WorkspaceRepository(Repository):
             return None
 
     def get_current_workspace(self):
-        path = pathlib.Path().absolute().as_posix()
-        return self.get_by_path(path)
+        path = pathlib.Path().absolute()
+
+        # Traverse path upwards to get the workspace
+        workspace = None
+        while workspace == None and path.as_posix() != "/":
+            workspace = self.get_by_path(path.as_posix())
+            path = path.parent
+
+        return workspace
 
     def update(self, workspace):
         serialized = self.schema.dump(workspace)

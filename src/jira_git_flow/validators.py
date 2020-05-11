@@ -1,5 +1,7 @@
 from prompt_toolkit.validation import Validator, ValidationError
 
+from jira_git_flow.db import EntityNotFound
+
 class UniqueID(Validator):
     def __init__(self, resource, repository):
         self.repository = repository
@@ -7,8 +9,11 @@ class UniqueID(Validator):
 
     def validate(self, document):
         id = document.text
-        if self.repository.find_by_id(id):
-            raise ValidationError(message=f"{self.resource} {id} already exists")
+        try:
+            if self.repository.find_by_id(id):
+                raise ValidationError(message=f"{self.resource} {id} already exists")
+        except EntityNotFound:
+            pass
 
 
 class ExistenceValidator(Validator):

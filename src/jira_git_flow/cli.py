@@ -217,15 +217,17 @@ class IssuesController(DynamicFormattedTextControl):
             self.choices.append((name, issue, disabled))
 
 
-def select_issue(choices, pointer_index):
+def select_issue(choices, pointer_index, msg):
     controller = IssuesController(message='choose issues', choices=choices,
                                   pointer_index=pointer_index)
+    if msg is None:
+        msg = "Choose issues:"
 
     def get_prompt():
         prompt = []
 
         prompt.append(('class:qmark', '?'))
-        prompt.append(('class:question', ' %s ' % 'Choose issues:'))
+        prompt.append(('class:question', ' %s ' % msg))
 
         return prompt
 

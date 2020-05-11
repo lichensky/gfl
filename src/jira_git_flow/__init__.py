@@ -1,13 +1,14 @@
 import click
 from prompt_toolkit import prompt
 from jira_git_flow import config
+from jira_git_flow import actions
 from jira_git_flow.credentials import CredentialsRepository, CredentialsCLI
 from jira_git_flow.instances import InstanceCLI, InstanceRepository
 from jira_git_flow.workflow import WorkflowRepository, WorkflowCLI
 from jira_git_flow.projects import ProjectCLI, ProjectRepository
-from jira_git_flow.workspaces import WorkspaceCLI, WorkspaceRepository
+from jira_git_flow.workspaces import WorkspaceCLI, WorkspaceRepository, WorkspaceSchema
 from jira_git_flow import git
-from jira_git_flow.jira_api import Jira
+from jira_git_flow.jira import Jira
 from jira_git_flow import cli
 from jira_git_flow import types
 from jira_git_flow.issues import Issue, IssueRepository, IssuesCLI
@@ -100,13 +101,16 @@ def add_project():
 def list_projects():
     projects_cli.list()
 
+
 @gfl.group()
 def workspaces():
     pass
 
+
 @workspaces.command(name="list")
 def list_workspaces():
     workspace_cli.list()
+
 
 @gfl.command()
 def init():
@@ -122,7 +126,7 @@ def workon(key, keyword):
     if not keyword:
         issue = work_on_task()
     else:
-        issue = get_issue_from_jira(key, keyword, "story")
+        issue = get_issue_from_jira(key, keyword, types.STORY)
         issue_repository.save(issue)
     click.echo("Working on {}".format(issue))
 
@@ -130,51 +134,63 @@ def workon(key, keyword):
 @gfl.command()
 def story():
     """Create a story"""
-    create_issue("story", subtask=False)
+    create_issue(types.STORY)
 
 
 @gfl.command()
 def start():
     """Start story/task"""
-    _change_status("start_progress")
+    make_action(actions.START)
 
 
 @gfl.command()
-def feature():
-    """Create (work on) feature."""
-    create_subtask("feature")
+def subtask():
+    """Create (work on) subtask."""
+    create_issue(types.SUBTASK)
+
+
+@gfl.command()
+def task():
+    """Create (work on) task"""
+    create_issue(types.TASK)
 
 
 @gfl.command()
 def bug():
     """Create (work on) bugfix."""
-    create_subtask("bug")
+    create_issue(types.BUG)
 
 
 @gfl.command()
 @click.option("-s", "--skip-pr", is_flag=True, default=False)
 def review(skip_pr):
     """Move issue to review"""
-    action = "review"
-    issues = _get_issues_by_action(action)
+    action = workspace.get_action(actions.REVIEW)
+    issues = issues_cli.choose_by_status(action.initial_state)
+    if not issues:
+        return
 
     if config.CREATE_PULL_REQUEST:
         for issue in issues:
-            skip_issue_pr = skip_pr or (issue.type == "story")
+            skip_issue_pr = skip_pr or (issue.type == types.STORY)
             if not skip_issue_pr:
                 branch = generate_branch_name(issue)
-                git.push(branch)
+                try:
+                    git.push(branch)
+                except:
+                    raise click.ClickException("Failed to push branch!")
                 git.create_pull_request(branch)
 
-    jira = connect()
+    jira = workspace.get_jira_connection()
     for issue in issues:
-        _make_action(jira, issue, action)
+        issue = jira.make_action(action, issue)
+        issue_repository.update(issue)
 
 
 @gfl.command()
 def resolve():
     """Resolve issue"""
-    _change_status("resolve")
+    make_action(actions.RESOLVE)
 
 
 @gfl.command()
@@ -188,7 +204,8 @@ def commit(message):
 @gfl.command()
 def publish():
     """Push branch to origin"""
-    branch = generate_branch_name(workspace.current_issue)
+    issue = issue_repository.find_by_key(workspace.current_issue)
+    branch = generate_branch_name(issue)
     git.push(branch)
 
 
@@ -218,14 +235,14 @@ def status():
     issues_cli.choose_interactive(filter_function=lambda issue: False, show_only=True)
 
 
-@gfl.command()
-def sync():
-    """Sync stories between Jira and local storage"""
-    jira = connect()
-    remote_stories = [
-        jira.get_issue_by_key(story.key) for story in storage.get_stories()
-    ]
-    storage.sync(remote_stories)
+# @gfl.command()
+# def sync():
+#     """Sync stories between Jira and local storage"""
+#     jira = workspace.get_jira_connection()
+#     remote_stories = [
+#         jira.get_issue_by_key(story.key) for story in storage.get_stories()
+#     ]
+#     storage.sync(remote_stories)
 
 
 def work_on_task():
@@ -238,7 +255,7 @@ def work_on_task():
     else:
         checkout_branch(issue)
         workspace.current_issue = issue.key
-    workspace_repository.upsert(workspace)
+    workspace_repository.update(workspace)
     return issue
 
 
@@ -248,28 +265,26 @@ def checkout_branch(issue):
     git.checkout(branch)
 
 
-def create_issue(type, subtask, start_progress=True):
+def create_issue(type, start_progress=True):
     """Create Jira issue and return model."""
     try:
-        fields = cli.get_issue_fields(type, subtask)
+        fields = issues_cli.new(type)
 
-        jira = connect()
-        issue = Issue.from_jira(jira.create_issue(fields))
+        jira = workspace.get_jira_connection()
+        issue = jira.create_issue(fields)
 
         if start_progress:
-            _make_action(jira, issue, "start_progress")
+            action = workspace.get_action(actions.START)
+            jira.make_action(action, issue)
 
-        storage.add_issue(issue)
+        issue_repository.save(issue)
+
+        workspace.set_current_issue(issue)
+        workspace_repository.update(workspace)
 
         return issue
     except Exception as e:
         raise click.ClickException(e)
-
-
-def create_subtask(type):
-    """Create subtask and checkout branch."""
-    subtask = create_issue(type, True)
-    checkout_branch(subtask)
 
 
 def get_issue_from_jira(is_key, keyword, type):
@@ -280,74 +295,32 @@ def get_issue_from_jira(is_key, keyword, type):
     Return internal issue model.
     """
     try:
-        jira = connect()
+        jira = workspace.get_jira_connection()
         keyword = " ".join(keyword)
         if is_key:
-            issue = jira.get_issue_by_key(keyword)
-        else:
-            issues = jira.search_issues(keyword, type=type)
-            if not issues:
-                exit("No issues found with selected keyword: {}!".format(keyword))
-            elif len(issues) > 1:
-                issue = issues_cli.choose_issues_from_simple_view(issues)
-            else:
-                issue = issues[0]
+            return jira.get_issue_by_key(keyword)
 
-        return Issue.from_jira(issue)
+        issues = jira.search_issues(keyword, type=type)
+        if not issues:
+            exit("No issues found with selected keyword: {}!".format(keyword))
+        elif len(issues) > 1:
+            return issues_cli.choose_issues_from_simple_view(issues)
+        else:
+            return issues[0]
+
     except Exception as e:
         # raise click.ClickException(e)
         raise e
 
 
-def _get_issues_by_action(action):
-    status = _get_action_status(action)
-    issues = cli.choose_by_status(status)
-    return issues
-
-
-def _change_status(action, issues=None):
-    issues = _get_issues_by_action(action)
-    jira = connect()
+def make_action(action):
+    action = workspace.get_action(action)
+    issues = issues_cli.choose_by_status(action.initial_state)
+    jira = workspace.get_jira_connection()
     for issue in issues:
-        _make_action(jira, issue, action)
+        issue = jira.make_action(action, issue)
+        issue_repository.update(issue)
 
-
-def _make_action(jira, issue, action_to_perform):
-    action = _get_issue_actions(issue)[action_to_perform]
-    issue.status = action["next_state"]
-    jira_issue = jira.get_issue_by_key(issue.key)
-    for transition in action["transitions"]:
-        jira.transition_issue(jira_issue, transition)
-    _assign_issue(jira, jira_issue, action)
-    storage.update_issue(issue)
-
-
-def _get_issue_actions(issue):
-    default_actions = config.ACTIONS["default"]
-    if issue.type in config.ACTIONS:
-        actions = default_actions
-        for action, parameters in config.ACTIONS[issue.type].items():
-            for parameter, value in parameters.items():
-                actions[action][parameter] = value
-        return {k: v for k, v in actions.items() if k in config.ACTIONS[issue.type]}
-    return default_actions
-
-
-def _get_action_status(action):
-    return config.ACTIONS["default"][action]["current_state"]
-
-
-def _assign_issue(jira, jira_issue, action):
-    if "assign_to_user" in action and action["assign_to_user"]:
-        jira.assign_issue(jira_issue, config.USERNAME)
-    else:
-        jira.assign_issue(jira_issue, None)
-
-
-def connect():
-    """Connect to JIRA and return Jira instance."""
-    user = config.USERNAME if config.USE_USERNAME else config.EMAIL
-    return JiraService(config.URL, user, config.TOKEN, config.PROJECT, config.MAX_RESULTS)
 
 def require_workspace():
     if not workspace:

@@ -5,7 +5,7 @@ from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit.styles import Style
 
 from jira_git_flow.cli import print_simple_collection
-from jira_git_flow.db import EntityRepository
+from jira_git_flow.db import EntityRepository, ForeignEntity
 from jira_git_flow.actions import Action, ActionSchema, ACTIONS
 from jira_git_flow.statuses import (
     IssueStatusMapping,
@@ -31,6 +31,18 @@ class Workflow:
     def add_type(self, type_mapping):
         self.types.append(type_mapping)
 
+    def get_action(self, name):
+        for a in self.actions:
+            if a.name == name:
+                return a
+        return None
+
+    def get_type_mapping(self, issue_type):
+        for t in self.types:
+            if t.issue_type == issue_type:
+                return t
+        return None
+
 
 class WorkflowSchema(Schema):
     id = fields.Str()
@@ -54,6 +66,9 @@ class WorkflowRepository(EntityRepository):
     def __init__(self):
         super().__init__(Workflow, WorkflowSchema(), "workflows.json")
 
+
+class WorkflowEntity(ForeignEntity):
+    repository = WorkflowRepository
 
 class WorkflowCLI:
     def __init__(self, workflow_repository):
