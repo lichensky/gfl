@@ -4,10 +4,9 @@ from jira_git_flow import config
 from jira_git_flow.issues import Issue
 
 
-def generate_branch_name(issue):
+def generate_branch_name(workflow, issue):
     """Generate branch name from issue"""
-    issue_model = Issue.from_jira(issue)
-    prefix = config.ISSUE_TYPES[issue_model.type]['prefix']
-    summary = re.sub(r"[^a-zA-Z0-9]+", ' ', issue_model.summary).lower().replace(' ', '-')
-    branch = '{}{}-{}'.format(prefix, issue_model.key, summary)
+    prefix = workflow.get_branch_prefix(issue)
+    summary = re.sub(r"[^a-zA-Z0-9]+", ' ', issue.summary).lower().replace(' ', '-')
+    branch = '{}{}-{}'.format(prefix, issue.key, summary)
     return branch[0:70]

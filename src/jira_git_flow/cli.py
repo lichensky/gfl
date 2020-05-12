@@ -2,6 +2,7 @@
 import click
 
 from jira_git_flow import config
+from jira_git_flow import types
 
 from prompt_toolkit import print_formatted_text, HTML
 from prompt_toolkit.layout.screen import Point
@@ -177,7 +178,7 @@ class IssuesController(DynamicFormattedTextControl):
             selected = (issue in self.selected)
             pointed_at = (i == self.pointer_index)
 
-            if issue.type != 'story':
+            if issue.type == types.SUBTASK:
                 choices.append(('class:default', '   '))
 
             if pointed_at:

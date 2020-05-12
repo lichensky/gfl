@@ -76,11 +76,11 @@ class Jira(object):
     def make_action(self, action, issue):
         issue.status = action.next_state
         # Get jira issue to perform transitions
-        jira_issue = self.get_issue_by_key(issue.key)
+        jira_issue = self.jira.issue(issue.key)
         for transition in action.transitions:
             self.transition_issue(jira_issue, transition)
         if action.assign_to_user:
-            jira.assign_issue(jira_issue, self.username)
+            self.assign_issue(jira_issue, self.username)
         return issue
 
     def _convert_to_issue(self, jira_issue):

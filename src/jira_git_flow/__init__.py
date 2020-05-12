@@ -1,5 +1,8 @@
 import click
+
+from contextlib import contextmanager
 from prompt_toolkit import prompt
+
 from jira_git_flow import config
 from jira_git_flow import actions
 from jira_git_flow.credentials import CredentialsRepository, CredentialsCLI
@@ -174,7 +177,7 @@ def review(skip_pr):
         for issue in issues:
             skip_issue_pr = skip_pr or (issue.type == types.STORY)
             if not skip_issue_pr:
-                branch = generate_branch_name(issue)
+                branch = generate_branch_name(workspace.project.workflow, issue)
                 try:
                     git.push(branch)
                 except:
@@ -205,7 +208,7 @@ def commit(message):
 def publish():
     """Push branch to origin"""
     issue = issue_repository.find_by_key(workspace.current_issue)
-    branch = generate_branch_name(issue)
+    branch = generate_branch_name(workspace.project.workflow, issue)
     git.push(branch)
 
 
@@ -213,28 +216,30 @@ def publish():
 def finish():
     """Finish story"""
     print(workspace.current_story)
-    stories = issues_cli.choose_by_types(types.STORY)
+    issues = issues_cli.all_but_type(types.SUBTASK)
 
-    for story in stories:
-        issue_repository.remove(story)
+    for issue in issues:
+        issue_repository.remove(issue)
 
-    print(workspace.current_story)
     if workspace.current_story is None:
         click.echo("Choose story to work on.")
         choices = issues_cli.choose_by_types(types.STORY)
         if choices:
-            story = choices[0]
-            workspace.current_story = story.key
+            issue = choices[0]
+            workspace.current_story = issue.key
             workspace_repository.update(workspace)
 
 
 @gfl.command()
 def status():
     """Get work status"""
+    click.echo(f"Current story: {workspace.current_story}")
+    click.echo(f"Current issue: {workspace.current_issue}")
     click.echo("Status:")
     issues_cli.choose_interactive(filter_function=lambda issue: False, show_only=True)
 
 
+# TODO: FIX issue syncing
 # @gfl.command()
 # def sync():
 #     """Sync stories between Jira and local storage"""
@@ -261,7 +266,7 @@ def work_on_task():
 
 def checkout_branch(issue):
     """Checkout issue Git branch."""
-    branch = generate_branch_name(issue)
+    branch = generate_branch_name(workspace.project.workflow, issue)
     git.checkout(branch)
 
 
@@ -278,6 +283,9 @@ def create_issue(type, start_progress=True):
             jira.make_action(action, issue)
 
         issue_repository.save(issue)
+
+        if issue.type != types.STORY:
+            checkout_branch(issue)
 
         workspace.set_current_issue(issue)
         workspace_repository.update(workspace)

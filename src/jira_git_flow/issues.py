@@ -74,7 +74,19 @@ class IssueRepository(Repository):
                     return subtask
 
     def update(self, issue):
-        self.db.update(self.schema.dump(issue), Query().key == issue.key)
+        """Update issue in database. If issue not found search for subtasks."""
+        try:
+            self.db.search(Query().key == issue.key)[0]
+            self.db.update(self.schema.dump(issue), Query().key == issue.key)
+        except IndexError:
+            for issue_in_db in self.all():
+                try:
+                    i = issue_in_db.subtasks.index(issue)
+                    issue_in_db.subtasks[i] = issue
+                    self.update(issue_in_db)
+                except ValueError:
+                    pass
+
 
     def remove(self, issue):
         self.db.remove(Query().key == issue.key)
@@ -89,6 +101,9 @@ class IssuesCLI:
         issues = self.choose_interactive()
         if issues:
             return issues[0]
+
+    def all_but_type(self, type, msg=None):
+        return self.choose_interactive(lambda issue: issue.type != type, msg=msg)
 
     def choose_by_types(self, types, msg=None):
         return self.choose_interactive(lambda issue: issue.type in types, msg=msg)
@@ -151,11 +166,11 @@ class IssuesCLI:
             "Description: (ESCAPE followed by ENTER to accept)\n > ", multiline=True
         )
         fields = {
-            "project": {"key": self.workspace.project},
+            "project": {"key": self.workspace.project.key},
             "summary": summary,
             "description": description,
             "issuetype": {
-                "name": workspace.workflow.get_type_mapping(type),
+                "name": self.workspace.project.workflow.get_type_mapping(type),
                 "subtask": is_subtask,
             },
         }

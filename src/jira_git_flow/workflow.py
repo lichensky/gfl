@@ -40,8 +40,13 @@ class Workflow:
     def get_type_mapping(self, issue_type):
         for t in self.types:
             if t.issue_type == issue_type:
-                return t
+                return t.mapping
         return None
+
+    def get_branch_prefix(self, issue):
+        for t in self.types:
+            if t.issue_type == issue.type:
+                return t.prefix
 
 
 class WorkflowSchema(Schema):
