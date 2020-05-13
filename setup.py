@@ -28,9 +28,9 @@ requirements_tests = [
 ]
 
 setup(
-    name='jira-git-flow',
+    name='gfl',
     version=package_version,
-    author='Bartosz Lichenski',
+    author='lichensky',
     description="Manage JIRA with simple commands",
     package_dir={'': 'src'},
     packages=find_packages('src'),

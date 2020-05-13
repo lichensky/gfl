@@ -2,7 +2,6 @@ import os
 from marshmallow import Schema, fields, post_load
 from prompt_toolkit import prompt, print_formatted_text, HTML
 
-from jira_git_flow import config
 from jira_git_flow.cli import print_simple_collection
 from jira_git_flow.db import EntityRepository, ForeignEntity
 from jira_git_flow.validators import UniqueID

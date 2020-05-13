@@ -1,6 +1,5 @@
 """Utilities"""
 import re
-from jira_git_flow import config
 from jira_git_flow.issues import Issue
 
 

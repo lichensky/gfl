@@ -3,7 +3,6 @@ from marshmallow import Schema, fields, post_load
 from prompt_toolkit import prompt
 from tinydb import TinyDB
 
-from jira_git_flow import config
 from jira_git_flow.cli import print_simple_collection
 from jira_git_flow.db import EntityRepository, ForeignEntity
 from jira_git_flow.instances import InstanceEntity
@@ -51,12 +50,16 @@ class ProjectCLI:
     def new(self):
         id = prompt("Project ID: ", validator=UniqueID("Project", self.projects))
         key = questionary.text("Project key:").ask()
-        instance = questionary.select(
+        instance_id = questionary.select(
             "Project instance:", choices=self.instances.ids()
         ).ask()
-        workflow = questionary.select(
+        instance = self.instances.find_by_id(instance_id)
+
+        workflow_id = questionary.select(
             "Project workflow:", choices=self.workflows.ids()
         ).ask()
+        workflow = self.workflows.find_by_id(workflow_id)
+
 
         project = Project(id, key, instance, workflow)
         self.projects.save(project)

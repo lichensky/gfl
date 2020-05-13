@@ -336,15 +336,14 @@ def has_active_choices(choices):
     return False
 
 
-def get_pointer_index(stories, current_issue, current_story):
-    issue_keys = get_issue_keys(stories)
+def get_pointer_index(issues, current_issue):
+    issue_keys = get_issue_keys(issues)
 
-    for current in [current_issue, current_story]:
-        if current:
-            try:
-                return issue_keys.index(current)
-            except ValueError:
-                pass
+    if current_issue:
+        try:
+            return issue_keys.index(current_issue)
+        except ValueError:
+            pass
     return 0
 
 

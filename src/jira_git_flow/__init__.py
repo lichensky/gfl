@@ -67,56 +67,67 @@ def instances():
 
 @instances.command(name="add")
 def add_instance():
+    """Add new JIRA instance."""
     instances_cli.new()
 
 
 @instances.command(name="list")
 def list_instances():
+    """List available JIRA instances."""
     instances_cli.list()
 
 
 @gfl.group(name="workflows")
 def workflows():
+    """Manage issue workflows."""
     pass
 
 
 @workflows.command(name="add")
 def add_workflow():
+    """Add new workflow."""
     workflow_cli.new()
 
 
 @workflows.command(name="list")
 def list_workflows():
+    """List workflows."""
     workflow_cli.list()
 
 
 @gfl.group(name="projects")
 def projects():
+    """Manage JIRA projects."""
     pass
 
 
 @projects.command(name="add")
 def add_project():
+    """Add new project."""
     projects_cli.new()
 
 
 @projects.command(name="list")
 def list_projects():
+    """List projects."""
     projects_cli.list()
 
 
 @gfl.group()
 def workspaces():
+    """Manage workspace."""
     pass
 
 
 @workspaces.command(name="list")
 def list_workspaces():
+    """List workspaces"""
     workspace_cli.list()
 
 
 @gfl.command()
 def init():
+    """Init workspace."""
     workspace_cli.init()
 
 
@@ -127,40 +138,50 @@ def workon(key, keyword):
     """Work on story/issue."""
     require_workspace()
     if not keyword:
-        issue = work_on_task()
+        try:
+            issue = issues_cli.all_but_type(types.STORY)[0]
+        except IndexError:
+            exit("Select issue!")
     else:
-        issue = get_issue_from_jira(key, keyword, types.STORY)
+        issue_types = [types.STORY, types.TASK, types.BUG]
+        issue = get_issue_from_jira(key, keyword, issue_types)
         issue_repository.save(issue)
+    work_on_issue(issue)
     click.echo("Working on {}".format(issue))
 
 
 @gfl.command()
 def story():
     """Create a story"""
+    require_workspace()
     create_issue(types.STORY)
 
 
 @gfl.command()
 def start():
     """Start story/task"""
+    require_workspace()
     make_action(actions.START)
 
 
 @gfl.command()
 def subtask():
     """Create (work on) subtask."""
+    require_workspace()
     create_issue(types.SUBTASK)
 
 
 @gfl.command()
 def task():
     """Create (work on) task"""
+    require_workspace()
     create_issue(types.TASK)
 
 
 @gfl.command()
 def bug():
     """Create (work on) bugfix."""
+    require_workspace()
     create_issue(types.BUG)
 
 
@@ -168,10 +189,8 @@ def bug():
 @click.option("-s", "--skip-pr", is_flag=True, default=False)
 def review(skip_pr):
     """Move issue to review"""
-    action = workspace.get_action(actions.REVIEW)
-    issues = issues_cli.choose_by_status(action.initial_state)
-    if not issues:
-        return
+    require_workspace()
+    issues = make_action(actions.REVIEW)
 
     if config.CREATE_PULL_REQUEST:
         for issue in issues:
@@ -184,15 +203,12 @@ def review(skip_pr):
                     raise click.ClickException("Failed to push branch!")
                 git.create_pull_request(branch)
 
-    jira = workspace.get_jira_connection()
-    for issue in issues:
-        issue = jira.make_action(action, issue)
-        issue_repository.update(issue)
 
 
 @gfl.command()
 def resolve():
     """Resolve issue"""
+    require_workspace()
     make_action(actions.RESOLVE)
 
 
@@ -200,6 +216,7 @@ def resolve():
 @click.argument("message", type=str)
 def commit(message):
     """Commit for issue"""
+    require_workspace()
     issue_key = workspace.current_issue
     git.commit("{} {}".format(issue_key, message))
 
@@ -207,6 +224,7 @@ def commit(message):
 @gfl.command()
 def publish():
     """Push branch to origin"""
+    require_workspace()
     issue = issue_repository.find_by_key(workspace.current_issue)
     branch = generate_branch_name(workspace.project.workflow, issue)
     git.push(branch)
@@ -215,26 +233,29 @@ def publish():
 @gfl.command()
 def finish():
     """Finish story"""
-    print(workspace.current_story)
+    require_workspace()
     issues = issues_cli.all_but_type(types.SUBTASK)
 
     for issue in issues:
+        if workspace.current_issue  == issue.key:
+            workspace.current_issue = None
         issue_repository.remove(issue)
 
-    if workspace.current_story is None:
-        click.echo("Choose story to work on.")
+    if workspace.current_issue is None:
+        click.echo("Choose issue to work on.")
         choices = issues_cli.choose_by_types(types.STORY)
         if choices:
             issue = choices[0]
-            workspace.current_story = issue.key
-            workspace_repository.update(workspace)
+            workspace.current_issue = issue.key
+
+    workspace_repository.update(workspace)
 
 
 @gfl.command()
 def status():
     """Get work status"""
-    click.echo(f"Current story: {workspace.current_story}")
-    click.echo(f"Current issue: {workspace.current_issue}")
+    if workspace:
+        click.echo(f"Current issue: {workspace.current_issue}")
     click.echo("Status:")
     issues_cli.choose_interactive(filter_function=lambda issue: False, show_only=True)
 
@@ -250,18 +271,12 @@ def status():
 #     storage.sync(remote_stories)
 
 
-def work_on_task():
-    """Work on task from local storage."""
-    issue = issues_cli.choose_issue()
-    if not issue:
-        exit("Select issue!")
-    if issue.type == "story":
-        workspace.current_story = issue.key
-    else:
+def work_on_issue(issue):
+    """Work on issue"""
+    if issue.type != types.STORY:
         checkout_branch(issue)
         workspace.current_issue = issue.key
-    workspace_repository.update(workspace)
-    return issue
+        workspace_repository.update(workspace)
 
 
 def checkout_branch(issue):
@@ -282,20 +297,22 @@ def create_issue(type, start_progress=True):
             action = workspace.get_action(actions.START)
             jira.make_action(action, issue)
 
-        issue_repository.save(issue)
+        if issue.type == types.SUBTASK:
+            parent_key = fields["parent"]["key"]
+            parent = issue_repository.find_by_key(parent_key)
+            parent.add_subtask(issue)
+            issue_repository.update(parent)
+        else:
+            issue_repository.save(issue)
 
-        if issue.type != types.STORY:
-            checkout_branch(issue)
-
-        workspace.set_current_issue(issue)
-        workspace_repository.update(workspace)
+        work_on_issue(issue)
 
         return issue
     except Exception as e:
         raise click.ClickException(e)
 
 
-def get_issue_from_jira(is_key, keyword, type):
+def get_issue_from_jira(is_key, keyword, types):
     """
     Get issue from Jira.
 
@@ -308,7 +325,7 @@ def get_issue_from_jira(is_key, keyword, type):
         if is_key:
             return jira.get_issue_by_key(keyword)
 
-        issues = jira.search_issues(keyword, type=type)
+        issues = jira.search_issues(keyword, types=types)
         if not issues:
             exit("No issues found with selected keyword: {}!".format(keyword))
         elif len(issues) > 1:
@@ -328,6 +345,8 @@ def make_action(action):
     for issue in issues:
         issue = jira.make_action(action, issue)
         issue_repository.update(issue)
+
+    return issues
 
 
 def require_workspace():

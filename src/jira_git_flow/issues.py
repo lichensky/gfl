@@ -4,7 +4,6 @@ from marshmallow import Schema, fields, post_load
 from prompt_toolkit import prompt
 from tinydb import Query
 
-from jira_git_flow import config
 from jira_git_flow.db import Repository
 from jira_git_flow.cli import (
     get_pointer_index,
@@ -120,7 +119,7 @@ class IssuesCLI:
             return []
 
         pointer_index = get_pointer_index(
-            issues, self.workspace.current_issue, self.workspace.current_story
+            issues, self.workspace.current_issue
         )
         choices = convert_stories_to_choices(issues, filter_function)
 
@@ -146,14 +145,12 @@ class IssuesCLI:
 
         is_subtask = type == types.SUBTASK
         if is_subtask:
-            story = self.repository.find_by_key(self.workspace.current_story)
-            if not story:
-                try:
-                    story = self.choose_by_types(
-                        types.STORY, msg="Choose story to create subtask:"
-                    )[0]
-                except IndexError:
-                    raise Exception(CLIError.parent_required)
+            try:
+                story = self.choose_by_types(
+                    types.STORY, msg="Choose story to create subtask:"
+                )[0]
+            except IndexError:
+                raise Exception(CLIError.parent_required)
 
             if not story:
                 raise Exception(CLIError.parent_required)

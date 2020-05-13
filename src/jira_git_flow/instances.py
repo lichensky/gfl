@@ -5,7 +5,6 @@ from prompt_toolkit import prompt
 from prompt_toolkit.completion.word_completer import WordCompleter
 from tinydb import TinyDB, Query
 
-from jira_git_flow import config
 from jira_git_flow.db import EntityRepository, ForeignEntity
 from jira_git_flow.cli import print_simple_collection
 from jira_git_flow.jira import Jira

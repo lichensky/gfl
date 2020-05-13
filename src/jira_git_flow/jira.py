@@ -25,16 +25,17 @@ class Jira(object):
         """
         keyword = keyword.lower()
         query_parameters = []
-        if kwargs.get("type"):
-            query_parameters.append('type = "{}"'.format(kwargs.get("type")))
+        if kwargs.get("types"):
+            for type in kwargs.get("types"):
+                query_parameters.append('type = "{}"'.format(type))
 
-        query = " OR".join(query_parameters) + " order by created desc"
+        query = " OR ".join(query_parameters) + " order by created desc"
         issues = self.jira.search_issues(query, maxResults=self.max_results)
 
         matching_issues = []
         for issue in issues:
             if keyword in issue.key.lower() or keyword in issue.fields.summary.lower():
-                matching_issues.append(issue)
+                matching_issues.append(self._convert_to_issue(issue))
 
         return matching_issues
 

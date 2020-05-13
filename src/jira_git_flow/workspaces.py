@@ -15,7 +15,6 @@ class Workspace():
     def __init__(self, path, project):
         self.path = path
         self.project = project
-        self.current_story = None
         self.current_issue = None
 
     def set_current_issue(self, issue):
@@ -31,14 +30,12 @@ class Workspace():
 class WorkspaceSchema(Schema):
     path = fields.Str()
     project = ProjectEntity()
-    current_story = fields.Str(allow_none=True)
     current_issue = fields.Str(allow_none=True)
 
     @post_load
     def deserialize(self, data, **kwargs):
         workspace = Workspace(data['path'], data['project'])
         workspace.current_issue = data['current_issue']
-        workspace.current_story = data['current_story']
         return workspace
 
 class WorkspaceRepository(Repository):
