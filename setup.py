@@ -10,8 +10,10 @@ requirements = [
     'jira==2.0.0',  # JIRA client
     'wheel==0.29.0',  # adds support for building wheels
     'pbr>=3.0.0',  # jira dependency, https://github.com/pycontribs/jira/issues/501
-    'marshmallow==2.16.3',
-    'prompt-toolkit==2.0.9'
+    'marshmallow==3.6.0',
+    'prompt-toolkit==2.0.9',
+    'questionary==1.5.2',
+    'tinydb==4.1.1',
 ]
 
 requirements_tests = [
@@ -27,9 +29,9 @@ requirements_tests = [
 ]
 
 setup(
-    name='jira-git-flow',
+    name='gfl',
     version=package_version,
-    author='Bartosz Lichenski',
+    author='lichensky',
     description="Manage JIRA with simple commands",
     package_dir={'': 'src'},
     packages=find_packages('src'),
@@ -41,7 +43,7 @@ setup(
     test_suite='tests',
     entry_points={
         'console_scripts': [
-            'gfl = jira_git_flow:git_flow',
+            'gfl = gfl:gfl',
         ],
     },
 )

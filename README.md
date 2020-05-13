@@ -1,11 +1,11 @@
 This project was started as a pet project in [Clearcode](https://github.com/ClearcodeHQ/jira-git-flow)
 
-# jira-git-flow
+# gfl
 
-The `jira-git-flow` is simple CLI tool to manage Jira flow along with
+The `gfl` is simple CLI tool to manage Jira flow along with
 the git repository.
 
-It allows to manage Jira stories and subtasks in simple way.
+It allows to manage Jira issues, stories and subtasks in a simple way.
 When new task is created the git branch with suitable name will be created
 in local repository.
 
@@ -22,8 +22,7 @@ within virtualenv.
 Available commands:
 
 ````
-    gfl --help
-    Usage: git-flow [OPTIONS] COMMAND [ARGS]...
+    Usage: gfl [OPTIONS] COMMAND [ARGS]...
 
     Git flow.
 
@@ -31,134 +30,211 @@ Available commands:
     --help  Show this message and exit.
 
     Commands:
-    bug      Create (work on) bugfix.
-    commit   Commit for issue
-    feature  Create (work on) feature.
-    finish   Finish story
-    publish  Push branch to origin
-    resolve  Resolve issue
-    review   Move issue to review
-    start    Start story/task
-    status   Get work status
-    story    Create a story
-    sync     Sync stories between Jira and local storage
-    workon   Work on story/issue.
+    bug          Create (work on) bugfix.
+    commit       Commit for issue
+    credentials  Manage JIRA credentials.
+    finish       Finish story
+    init         Init workspace.
+    instances    Manage JIRA instances.
+    projects     Manage JIRA projects.
+    publish      Push branch to origin
+    resolve      Resolve issue
+    review       Move issue to review
+    start        Start story/task
+    status       Get work status
+    story        Create a story
+    subtask      Create (work on) subtask.
+    task         Create (work on) task
+    workflows    Manage issue workflows.
+    workon       Work on story/issue.
+    workspaces   Manage workspace.
 ````
 
-### status
+## Setup
 
-Get current work status.
+To work with `gfl` you need to setup JIRA instance, credentials,
+workflow and project.
 
-### workon
+### Credentials
 
-Start working on specific story / task.
+To authenticate with JIRA instance you'll need to setup credentials.
 
-#### Chosing from local tasks
+To add new credentials run:
 
-When command is run without any parameters task will be chosen from local
-storage.
+```
+gfl credentials add
+```
+<details><summary>Example</summary>
 
-#### Search Jira for stories
+  ![credentials](docs/credentials.gif)
 
-Stories can be searched in Jira by adding keywords to command.
-To get story by issue key use `-k` flag.
+</details>
 
-### story
+### Instances
 
-Create new story and start working on it.
+You can work with many JIRA instances. To add instance run:
 
-### feature / bug
+```
+gfl instances add
+```
 
-Add subtask to current story and start working on it.
-Subtask status will be set to `in_progess`. Git branch with suitable
-name will be created on local repo.
+<details><summary>Example</summary>
 
-### start / review / resolve
+  ![instances](docs/instances.gif)
 
-Change issue's status.
+</details>
 
-### commit
+### Workflows
 
-Make an git commit. Issue key will be added to the beginning of commit message.
+Each JIRA projects could have it's own workflow. Workflow describes available
+issue types, statuses and transitions.
 
-### publish
+As workflows may vary you'll need to map *gfl* resources with remote ones.
 
-Publish local branch on remote repository.
+If *assign during transition* is set, the issue will be assigned to user during
+transitions.
 
-### sync
+To add new workflow run:
 
-Sync local stories will remote Jira state.
+```
+gfl workflows add
+```
 
-## Configuration
+<details><summary>Example</summary>
 
-Tool can be configured via two configuration files:
+  ![workflows](docs/workflows.gif)
 
-* credentials.json
-* config.json
+</details>
 
-Both configuration files are located in `~/.config/jira-git-flow`.
+### Projects
 
-Jira credentials must be set in `credentials.json`.
+JIRA issues live in a specific project. Each projects has its key and workflow.
 
-Configuration is done via `config.json` file. At the first run default
-configuration file is created.
+To add a new project run:
 
-### url
+```
+gfl projects add
+```
 
-Specifies base url to Jira instance.
+<details><summary>Example</summary>
 
-### project
+  ![projects](docs/projects.gif)
 
-Specifies proejct key in Jira.
+</details>
 
-### statuses
+### Workspaces
 
-There are following statuses used internally in `jira-git-flow`:
+Each git workspace should be initialized to be used with gfl. To initialize
+workspace simply run:
 
-* open
-* in_progress
-* in_review
-* done
+```
+gfl init
+```
 
-Statuses configuration must be set to properly map
-Jira statuses to internal ones.
+**NOTE:** Workspace is coupled with JIRA project. All actions performed in
+specific workspace would be comply with project workflow.
 
-Multiple Jira statues can be mapped to one internal status.
+<details><summary>Example</summary>
 
-### actions
+  ![projects](docs/init.gif)
 
-Action section defines tasks workflow.
-There are following available actions:
+</details>
 
-* start_progress
+## Working on issues
+
+To start working on existing JIRA issue run:
+
+```
+gfl workon SEARCH_PHRASE
+```
+
+The *SEARCH PHRASE* is a phrase you want to search in remote issues summary. If
+one issue with specific phrase will be found you'll start working on it
+immediately. If multiple ones will be found you'll choose correct by CLI.
+
+**NOTE:** gfl by default searches only last 100 issues in project. If you want
+to increase value change *max_results* in config file.
+
+### Searching issue by key
+
+If you want to choose issue by specific key run workon with `-k` argument.
+
+```
+gfl workon -k PROJ-123
+```
+
+### Work on local issue
+
+If an issue is available in local state simply run command without any
+arguments.
+
+![workon](docs/workon.gif)
+
+### Branch naming
+
+The `gfl` will name your branch automatically according to prefixes set in workflow.
+
+## Getting work status
+
+To get current work status run:
+
+```
+gfl status
+```
+
+## Managing issue flow
+
+You can manage the issue flow with commands:
+
+* start
 * review
 * resolve
 
-Each action must define following attributes:
+Example:
 
-* `current_state` - task state for which action can be applied
-* `transitions` - jira transitions applied to task when action will be performed
-* `next_state` - task state set after action appliance
+![flow](docs/flow.gif)
 
-There is also optional `assign_to_user`. It specifies if issue should be assign to user on specific action.
+## Creating new issue
 
-Default actions are defined in `default` dictionary.
+You can create new issue by running one of following commands:
 
-When specific issue type has it's own actions it can be specified in object
-under issue type keyword.
+* `story`
+* `subtask`
+* `task`
+* `bug`
 
-### types
-There are following internal issue types in `jira-git-flow`:
+After successful creation you will start working on issue immediately.
 
-* story
-* feature
-* bug
+## Managing git repository
 
-Types section allows to define mapping between internal and Jira issue types.
+## Commiting changes
 
-Each type can have a prefix. Prefix will be added to git branch name.
+To make a commit for current issue run:
 
-### badges
+```
+gfl commit
+```
+
+Issue key will be added to the beginning of a commit message.
+
+## Publishing branch
+
+To publish current issue branch on remote repository run:
+
+```
+gfl publish
+```
+
+## Customization
+
+Tool can be customized by editing `~/.config/gfl/config.json` file.
+The file is created during first run.
+
+### Badges
 
 Each status has a bagde to display in terminal.
-Badges along with their colors can be defined in that section.
+Badges along with their colors can be defined in config.
+
+### Max results
+
+To increase max results during search increase *max_results* parameter.

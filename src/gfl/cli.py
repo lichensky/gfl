@@ -1,11 +1,10 @@
 """Cli module"""
 import click
 
-from jira_git_flow import config
-from jira_git_flow.models import JiraIssue
-from jira_git_flow.storage import storage
+from gfl import config
+from gfl import types
 
-from prompt_toolkit import print_formatted_text
+from prompt_toolkit import print_formatted_text, HTML
 from prompt_toolkit.layout.screen import Point
 from prompt_toolkit.application import Application, get_app
 from prompt_toolkit.filters import IsDone
@@ -147,7 +146,7 @@ class IssuesController(DynamicFormattedTextControl):
         super(IssuesController, self).__init__(
             self.get_formatted_choices,
             show_cursor=False,
-            get_cursor_position=lambda: Point(1, self.pointer_index))
+            get_cursor_position=lambda: Point(2, self.pointer_index))
 
     @property
     def line_count(self):
@@ -179,7 +178,7 @@ class IssuesController(DynamicFormattedTextControl):
             selected = (issue in self.selected)
             pointed_at = (i == self.pointer_index)
 
-            if issue.type != 'story':
+            if issue.type == types.SUBTASK:
                 choices.append(('class:default', '   '))
 
             if pointed_at:
@@ -219,15 +218,17 @@ class IssuesController(DynamicFormattedTextControl):
             self.choices.append((name, issue, disabled))
 
 
-def select_issue(choices, pointer_index):
+def select_issue(choices, pointer_index, msg):
     controller = IssuesController(message='choose issues', choices=choices,
                                   pointer_index=pointer_index)
+    if msg is None:
+        msg = "Choose issues:"
 
     def get_prompt():
         prompt = []
 
         prompt.append(('class:qmark', '?'))
-        prompt.append(('class:question', ' %s ' % 'Choose issues:'))
+        prompt.append(('class:question', ' %s ' % msg))
 
         return prompt
 
@@ -308,87 +309,6 @@ def select_issue(choices, pointer_index):
         return []
 
 
-def get_issue_fields(type, subtask):
-    issue = {}
-    if subtask:
-        current_story = storage.get_current_story()
-        click.echo('Creating subtask for story {}'.format(current_story))
-        issue['parent'] = {
-            'key': current_story.key
-        }
-
-    summary = click.prompt('Please enter {} summary'.format(type), type=str)
-    click.echo('Please enter {} description:'.format(type))
-    description = _get_multiline_input()
-    fields = {
-        'project': {'key': config.PROJECT},
-        'summary': summary,
-        'description': description,
-        'issuetype': {
-            'name': config.ISSUE_TYPES[type]['name'],
-            'subtask': subtask
-        },
-    }
-
-    issue.update(fields)
-
-    return issue
-
-
-def _get_multiline_input():
-    lines = []
-    while True:
-        line = input()
-        if line:
-            lines.append(line)
-        else:
-            break
-    return '\n'.join(lines)
-
-
-def choose_issues_from_simple_view(issues):
-    if not issues:
-        exit('No issues.')
-    click.echo('Matching issues')
-    for idx, issue in enumerate(issues):
-        issue_model = JiraIssue.from_issue(issue)
-        click.echo('{}: {} {}'.format(idx, issue_model.key, issue_model.summary))
-    issue_id = click.prompt('Choose issue', type=int)
-    return issues[issue_id]
-
-
-def choose_issue():
-    issues = choose_interactive()
-    if issues:
-        return issues[0]
-
-
-def choose_by_types(types):
-    return choose_interactive(lambda issue: issue.type in types)
-
-
-def choose_by_status(status):
-    return choose_interactive(lambda issue: issue.status == status)
-
-
-def choose_interactive(filter_function=lambda issue: True):
-    stories = storage.get_stories()
-
-    if not stories:
-        return []
-
-    pointer_index = get_pointer_index(stories)
-    choices = convert_stories_to_choices(stories, filter_function)
-
-    if choices[pointer_index].get('disabled'):
-        pointer_index = 0
-
-    issues = select_issue(pointer_index=pointer_index,
-                          choices=choices)
-
-    return issues
-
-
 def convert_stories_to_choices(stories, filter_function):
     choices = []
 
@@ -416,37 +336,27 @@ def has_active_choices(choices):
     return False
 
 
-def get_pointer_index(stories):
-    flatten_issues = get_flatten_issues(stories)
-    current_issue = storage.get_current_issue()
-    current_story = storage.get_current_story()
+def get_pointer_index(issues, current_issue):
+    issue_keys = get_issue_keys(issues)
 
-    for current in [current_issue, current_story]:
-        if current:
-            try:
-                return flatten_issues.index(current)
-            except ValueError:
-                pass
+    if current_issue:
+        try:
+            return issue_keys.index(current_issue)
+        except ValueError:
+            pass
     return 0
 
 
-def get_flatten_issues(stories):
-    flatten_issues = []
+def get_issue_keys(stories):
+    keys = []
     for story in stories:
-        flatten_issues.append(story)
-        flatten_issues.extend(story.subtasks)
-    return flatten_issues
+        keys.append(story.key)
+        keys.extend([task.key for task in story.subtasks])
+    return keys
 
 
 def render_issue_key(issue):
-    underline = ''
-    if storage.get_current_issue():
-        if working_on_issue(issue):
-            underline = 'underline'
-    else:
-        if working_on_story(issue):
-            underline = 'underline'
-    return ('bold %s' % underline, issue.key)
+    return ('bold', issue.key)
 
 
 def render_badge(issue):
@@ -455,15 +365,16 @@ def render_badge(issue):
     return ('fg: {color} bg:'.format(color=color), ' %s' % badge)
 
 
-def working_on_issue(issue):
-    current_issue = storage.get_current_issue()
-    if current_issue:
-        return issue == current_issue
-    return False
+def print_simple_collection(schema, collection, id, exclude=[]):
+    for item in collection:
+        item_dict = schema.dump(item)
 
+        id_title = id.capitalize()
+        print_formatted_text(HTML("<b>%s: </b>%s" % (id_title, item_dict[id])))
 
-def working_on_story(story):
-    current_story = storage.get_current_story()
-    if current_story:
-        return story == current_story
-    return False
+        for k, v in item_dict.items():
+            if k != id and k not in exclude:
+                print_formatted_text(HTML("  <b>%s:</b> %s" % (k.capitalize(), v)))
+
+        if item != collection[-1]:
+            print()
