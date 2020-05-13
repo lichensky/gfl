@@ -4,7 +4,7 @@ import json
 from marshmallow import fields
 from tinydb import TinyDB, Query
 
-from jira_git_flow import config
+from gfl import config
 
 
 class EntityNotFound(Exception):

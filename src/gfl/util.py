@@ -1,6 +1,6 @@
 """Utilities"""
 import re
-from jira_git_flow.issues import Issue
+from gfl.issues import Issue
 
 
 def generate_branch_name(workflow, issue):

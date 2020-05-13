@@ -3,11 +3,11 @@ from marshmallow import Schema, fields, post_load
 from prompt_toolkit import prompt
 from tinydb import TinyDB
 
-from jira_git_flow.cli import print_simple_collection
-from jira_git_flow.db import EntityRepository, ForeignEntity
-from jira_git_flow.instances import InstanceEntity
-from jira_git_flow.workflow import WorkflowEntity
-from jira_git_flow.validators import UniqueID
+from gfl.cli import print_simple_collection
+from gfl.db import EntityRepository, ForeignEntity
+from gfl.instances import InstanceEntity
+from gfl.workflow import WorkflowEntity
+from gfl.validators import UniqueID
 
 
 class Project:

@@ -1,8 +1,8 @@
 """Cli module"""
 import click
 
-from jira_git_flow import config
-from jira_git_flow import types
+from gfl import config
+from gfl import types
 
 from prompt_toolkit import print_formatted_text, HTML
 from prompt_toolkit.layout.screen import Point

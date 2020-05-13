@@ -2,9 +2,9 @@ import os
 from marshmallow import Schema, fields, post_load
 from prompt_toolkit import prompt, print_formatted_text, HTML
 
-from jira_git_flow.cli import print_simple_collection
-from jira_git_flow.db import EntityRepository, ForeignEntity
-from jira_git_flow.validators import UniqueID
+from gfl.cli import print_simple_collection
+from gfl.db import EntityRepository, ForeignEntity
+from gfl.validators import UniqueID
 
 
 class Credentials:

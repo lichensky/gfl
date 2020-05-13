@@ -1,7 +1,7 @@
 import click
 from jira import JIRA, JIRAError
 
-from jira_git_flow.issues import Issue
+from gfl.issues import Issue
 
 
 class Jira(object):

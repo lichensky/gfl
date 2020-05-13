@@ -6,9 +6,9 @@ from os import path
 from marshmallow import Schema, fields, post_load
 from tinydb import Query
 
-from jira_git_flow.db import Repository
-from jira_git_flow.cli import print_simple_collection
-from jira_git_flow.projects import ProjectEntity
+from gfl.db import Repository
+from gfl.cli import print_simple_collection
+from gfl.projects import ProjectEntity
 
 
 class Workspace():

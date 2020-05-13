@@ -4,15 +4,15 @@ from prompt_toolkit import prompt, print_formatted_text, HTML
 from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit.styles import Style
 
-from jira_git_flow.cli import print_simple_collection
-from jira_git_flow.db import EntityRepository, ForeignEntity
-from jira_git_flow.actions import Action, ActionSchema, ACTIONS
-from jira_git_flow.statuses import (
+from gfl.cli import print_simple_collection
+from gfl.db import EntityRepository, ForeignEntity
+from gfl.actions import Action, ActionSchema, ACTIONS
+from gfl.statuses import (
     IssueStatusMapping,
     IssueStatusMappingSchema,
     STATUSES,
 )
-from jira_git_flow.types import IssueTypeMapping, IssueTypeMappingSchema, TYPES
+from gfl.types import IssueTypeMapping, IssueTypeMappingSchema, TYPES
 
 
 class Workflow:

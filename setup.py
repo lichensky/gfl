@@ -13,6 +13,7 @@ requirements = [
     'marshmallow==3.6.0',
     'prompt-toolkit==2.0.9',
     'questionary==1.5.2',
+    'tinydb==4.1.1',
 ]
 
 requirements_tests = [
@@ -42,7 +43,7 @@ setup(
     test_suite='tests',
     entry_points={
         'console_scripts': [
-            'gfl = jira_git_flow:gfl',
+            'gfl = gfl:gfl',
         ],
     },
 )

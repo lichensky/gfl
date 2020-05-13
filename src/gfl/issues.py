@@ -4,13 +4,13 @@ from marshmallow import Schema, fields, post_load
 from prompt_toolkit import prompt
 from tinydb import Query
 
-from jira_git_flow.db import Repository
-from jira_git_flow.cli import (
+from gfl.db import Repository
+from gfl.cli import (
     get_pointer_index,
     convert_stories_to_choices,
     select_issue,
 )
-from jira_git_flow import types
+from gfl import types
 
 
 class CLIError:

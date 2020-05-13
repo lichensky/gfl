@@ -5,11 +5,11 @@ from prompt_toolkit import prompt
 from prompt_toolkit.completion.word_completer import WordCompleter
 from tinydb import TinyDB, Query
 
-from jira_git_flow.db import EntityRepository, ForeignEntity
-from jira_git_flow.cli import print_simple_collection
-from jira_git_flow.jira import Jira
-from jira_git_flow.validators import UniqueID, ExistenceValidator
-from jira_git_flow.credentials import CredentialsSchema, CredentialsEntity
+from gfl.db import EntityRepository, ForeignEntity
+from gfl.cli import print_simple_collection
+from gfl.jira import Jira
+from gfl.validators import UniqueID, ExistenceValidator
+from gfl.credentials import CredentialsSchema, CredentialsEntity
 
 JIRA_SERVER = "server"
 JIRA_CLOUD = "cloud"

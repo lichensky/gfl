@@ -1,6 +1,6 @@
 from marshmallow import Schema, fields, post_load
 
-from jira_git_flow import statuses
+from gfl import statuses
 
 START = "start"
 REVIEW = "review"

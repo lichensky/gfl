@@ -1,6 +1,6 @@
 from prompt_toolkit.validation import Validator, ValidationError
 
-from jira_git_flow.db import EntityNotFound
+from gfl.db import EntityNotFound
 
 class UniqueID(Validator):
     def __init__(self, resource, repository):

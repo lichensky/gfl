@@ -3,19 +3,19 @@ import click
 from contextlib import contextmanager
 from prompt_toolkit import prompt
 
-from jira_git_flow import config
-from jira_git_flow import actions
-from jira_git_flow.credentials import CredentialsRepository, CredentialsCLI
-from jira_git_flow.instances import InstanceCLI, InstanceRepository
-from jira_git_flow.workflow import WorkflowRepository, WorkflowCLI
-from jira_git_flow.projects import ProjectCLI, ProjectRepository
-from jira_git_flow.workspaces import WorkspaceCLI, WorkspaceRepository, WorkspaceSchema
-from jira_git_flow import git
-from jira_git_flow.jira import Jira
-from jira_git_flow import cli
-from jira_git_flow import types
-from jira_git_flow.issues import Issue, IssueRepository, IssuesCLI
-from jira_git_flow.util import generate_branch_name
+from gfl import config
+from gfl import actions
+from gfl.credentials import CredentialsRepository, CredentialsCLI
+from gfl.instances import InstanceCLI, InstanceRepository
+from gfl.workflow import WorkflowRepository, WorkflowCLI
+from gfl.projects import ProjectCLI, ProjectRepository
+from gfl.workspaces import WorkspaceCLI, WorkspaceRepository, WorkspaceSchema
+from gfl import git
+from gfl.jira import Jira
+from gfl import cli
+from gfl import types
+from gfl.issues import Issue, IssueRepository, IssuesCLI
+from gfl.util import generate_branch_name
 
 # Initialize repositories
 credentials_repository = CredentialsRepository()
