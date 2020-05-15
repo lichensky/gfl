@@ -27,7 +27,8 @@ config = {
             'color': 'green'
         }
     },
-    'max_results': 100
+    'max_results': 100,
+    'create_pull_request': True
 }
 
 if not os.path.exists(BASE_DIRECTORY):
@@ -42,5 +43,5 @@ else:
 
 
 BADGES = config['badges']
-CREATE_PULL_REQUEST = False
+CREATE_PULL_REQUEST = config['create_pull_request']
 MAX_RESULTS = config['max_results']

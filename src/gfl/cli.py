@@ -370,11 +370,23 @@ def print_simple_collection(schema, collection, id, exclude=[]):
         item_dict = schema.dump(item)
 
         id_title = id.capitalize()
-        print_formatted_text(HTML("<b>%s: </b>%s" % (id_title, item_dict[id])))
+        print_kv(id_title, item_dict[id])
+
 
         for k, v in item_dict.items():
             if k != id and k not in exclude:
-                print_formatted_text(HTML("  <b>%s:</b> %s" % (k.capitalize(), v)))
+                print_kv(k, v, level=1)
 
         if item != collection[-1]:
             print()
+
+def print_kv(k, v, level=0):
+    v = str(v)
+    print_value = v if v else "N/A"
+    prefix = "  " * level
+    text = FormattedText([
+            ('', prefix),
+            ('bold', f"{k}: "),
+            ('', print_value)
+        ])
+    print_formatted_text(text)

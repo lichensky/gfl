@@ -118,8 +118,13 @@ class IssuesCLI:
         if not issues:
             return []
 
+        if self.workspace:
+            current_issue = self.workspace.current_issue
+        else:
+            current_issue = None
+
         pointer_index = get_pointer_index(
-            issues, self.workspace.current_issue
+            issues, current_issue
         )
         choices = convert_stories_to_choices(issues, filter_function)
 

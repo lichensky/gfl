@@ -1,4 +1,5 @@
 import click
+import webbrowser
 
 from contextlib import contextmanager
 from prompt_toolkit import prompt
@@ -201,7 +202,12 @@ def review(skip_pr):
                     git.push(branch)
                 except:
                     raise click.ClickException("Failed to push branch!")
-                git.create_pull_request(branch)
+
+                try:
+                    url = workspace.get_pr_url(branch)
+                    webbrowser.open(url)
+                except Exception:
+                    raise click.ClickException("Failed to create PR!")
 
 
 
