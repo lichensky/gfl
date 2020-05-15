@@ -1,6 +1,8 @@
 import json
 import os
 
+from gfl import statuses
+
 BASE_DIRECTORY = os.path.expanduser('~') + '/.config/gfl/'
 DATA_DIR = os.path.join(BASE_DIRECTORY, 'data')
 CONFIG_FILE = BASE_DIRECTORY + 'config.json'
@@ -8,19 +10,19 @@ CONFIG_FILE = BASE_DIRECTORY + 'config.json'
 
 config = {
     'badges': {
-        'open': {
+        statuses.OPEN: {
             'badge': '•',
             'color': 'gray'
         },
-        'in_progress': {
+        statuses.IN_PROGRESS: {
             'badge': '••',
             'color': 'blue'
         },
-        'review': {
+        statuses.REVIEW: {
             'badge': '•••',
             'color': 'orange'
         },
-        'resolved': {
+        statuses.DONE: {
             'badge': '✔',
             'color': 'green'
         }

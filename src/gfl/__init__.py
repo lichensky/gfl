@@ -309,7 +309,7 @@ def create_issue(type, start_progress=True):
 
         return issue
     except Exception as e:
-        raise click.ClickException(e)
+        raise e
 
 
 def get_issue_from_jira(is_key, keyword, types):
