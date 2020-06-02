@@ -210,7 +210,6 @@ def review(skip_pr):
                     raise click.ClickException("Failed to create PR!")
 
 
-
 @gfl.command()
 def resolve():
     """Resolve issue"""
@@ -219,12 +218,16 @@ def resolve():
 
 
 @gfl.command()
+@click.option("-sa", "--skip-add", is_flag=True)
 @click.argument("message", type=str)
-def commit(message):
+def commit(skip_add, message):
     """Commit for issue"""
     require_workspace()
     issue_key = workspace.current_issue
-    git.commit("{} {}".format(issue_key, message))
+    try:
+        git.commit(issue_key, message, skip_add)
+    except:
+        raise click.ClickException("Failed to commit changes.")
 
 
 @gfl.command()
@@ -243,7 +246,7 @@ def finish():
     issues = issues_cli.all_but_type(types.SUBTASK)
 
     for issue in issues:
-        if workspace.current_issue  == issue.key:
+        if workspace.current_issue == issue.key:
             workspace.current_issue = None
         issue_repository.remove(issue)
 
@@ -261,9 +264,12 @@ def finish():
 def status():
     """Get work status"""
     if workspace:
+        click.echo(f"Project: {workspace.project.id}")
         click.echo(f"Current issue: {workspace.current_issue}")
     click.echo("Status:")
-    issues_cli.choose_interactive(filter_function=lambda issue: False, show_only=True)
+    issues_cli.choose_interactive(
+        filter_functions=[lambda issue: False], show_only=True
+    )
 
 
 # TODO: FIX issue syncing
@@ -288,7 +294,10 @@ def work_on_issue(issue):
 def checkout_branch(issue):
     """Checkout issue Git branch."""
     branch = generate_branch_name(workspace.project.workflow, issue)
-    git.checkout(branch)
+    try:
+        git.checkout(branch)
+    except Exception:
+        raise click.ClickException("Failed to checkout branch.")
 
 
 def create_issue(type, start_progress=True):
@@ -344,7 +353,7 @@ def get_issue_from_jira(is_key, keyword, types):
         raise e
 
 
-def make_action(action):
+def make_action(action, project_aware=True):
     action = workspace.get_action(action)
     issues = issues_cli.choose_by_status(action.initial_state)
     jira = workspace.get_jira_connection()

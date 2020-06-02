@@ -309,7 +309,7 @@ def select_issue(choices, pointer_index, msg):
         return []
 
 
-def convert_stories_to_choices(stories, filter_function):
+def convert_stories_to_choices(stories, filter_functions):
     choices = []
 
     def append(issue):
@@ -317,8 +317,9 @@ def convert_stories_to_choices(stories, filter_function):
             'name': issue.summary,
             'issue': issue
         }
-        if not filter_function(issue):
-            choice['disabled'] = True
+        for filter in filter_functions:
+            if not filter(issue):
+                choice['disabled'] = True
         choices.append(choice)
 
     for story in stories:

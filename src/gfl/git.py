@@ -4,6 +4,7 @@ import webbrowser
 from urllib.parse import quote_plus
 
 import click
+import subprocess
 from subprocess import check_output
 
 
@@ -16,9 +17,17 @@ def checkout(branch):
     check_output(["git", "checkout", "-b", branch])
 
 
-def commit(message):
+def commit(issue_key, message, skip_add):
     """Commit."""
-    check_output(["git", "commit", "-a", "-m", "{}".format(message)])
+    try:
+        commit_msg = f"{issue_key} {message}"
+        if not skip_add:
+            check_output(["git", "add", "."])
+        cmd = ["git", "commit",  "-m", "{}".format(commit_msg)]
+        check_output(cmd)
+    except subprocess.CalledProcessError as e:
+        print(e.output.decode())
+        raise e
 
 
 def push(branch, remote="origin"):

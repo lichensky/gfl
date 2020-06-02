@@ -102,16 +102,21 @@ class IssuesCLI:
             return issues[0]
 
     def all_but_type(self, type, msg=None):
-        return self.choose_interactive(lambda issue: issue.type != type, msg=msg)
+        return self.choose_interactive([lambda issue: issue.type != type], msg=msg)
 
     def choose_by_types(self, types, msg=None):
-        return self.choose_interactive(lambda issue: issue.type in types, msg=msg)
+        return self.project_aware(lambda issue: issue.type in types, msg=msg)
 
     def choose_by_status(self, status, msg=None):
-        return self.choose_interactive(lambda issue: issue.status == status, msg=msg)
+        return self.project_aware(lambda issue: issue.status == status, msg=msg)
+
+    def project_aware(self, filter_function, msg=None):
+        filter_by_project = lambda issue: self.workspace.project.key in issue.key
+        filters = [filter_by_project, filter_function]
+        return self.choose_interactive(filters, msg=msg)
 
     def choose_interactive(
-        self, filter_function=lambda issue: True, show_only=False, msg=None
+        self, filter_functions=[lambda issue: True], show_only=False, msg=None
     ):
         issues = self.repository.all()
 
@@ -126,7 +131,7 @@ class IssuesCLI:
         pointer_index = get_pointer_index(
             issues, current_issue
         )
-        choices = convert_stories_to_choices(issues, filter_function)
+        choices = convert_stories_to_choices(issues, filter_functions)
 
         if choices[pointer_index].get("disabled") and not show_only:
             pointer_index = 0
